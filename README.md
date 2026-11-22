@@ -1,4 +1,4 @@
-# 拾页 · Cloudflare 版
+# 愉阅 · Cloudflare 版
 
 书源聚合阅读器，整套逻辑跑在 Cloudflare 上：**前端页面 + 一个 Worker**（抓取代理 + 封面代理），
 书源规则引擎在浏览器里执行，不需要任何服务器，也就不用养 Python 进程。
