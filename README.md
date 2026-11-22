@@ -97,14 +97,26 @@ node scripts/build-sources.mjs
 体检结果 `data/audit.json` 可以自己造：格式是 `{recs:[{name,host,search,toc,content,ms,err,sample}]}`，
 `search/toc` 是条数、`content` 是正文字数。没有这个文件也能跑，只是所有源都标成 `untested`、排序靠后。
 
+### 删掉没用的书源
+
+书源管理页每个源右侧有垃圾桶图标（单条删除），状态筛选栏下方有「清理失效 N 个」按钮（一次删掉体检为 dead 的全部源）。
+
+删除记录按 URL 存在浏览器 `localStorage`（键 `shiyue.sources.removed`），所以：
+
+* 只影响你这台设备，别人打开还是完整列表；
+* 刷新、关浏览器都保持删除状态；
+* 重新导入同一个书源会自动把它从删除名单里恢复；
+* 想全部还原：清掉站点数据，或 `localStorage.removeItem('shiyue.sources.removed')` 后刷新。
+
 ## 六、已知限制
 
 | 项目 | 说明 |
 | --- | --- |
 | JS 书源 | Worker 禁 eval，这类源在构建期被过滤；浏览器版引擎支持 XPath/CSS/JSONPath/正则替换子集 |
-| 搜索速度 | 取决于源站响应，一般 2~3 秒；慢源会被并发拖住，可在书源管理里停用 |
+| 搜索速度 | 全部启用源并发，首批结果约 1 秒出现、跑完约 9~10 秒；慢源可停用或删除 |
 | 封面 | 部分源没有封面字段，卡片显示渐变占位 |
 | 缓存 | 存在浏览器 IndexedDB，换设备/清站点数据就没了 |
+| 删除书源 | 记录只在本机浏览器，不同步到其他设备，也不改仓库里的 `sources.json` |
 | 版权 | 书源来自公开合集，正文版权归原站与作者，仅供个人阅读测试 |
 
 ## 七、和 Vercel 版的差别

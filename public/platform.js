@@ -12,6 +12,7 @@
 
   const EN_KEY = 'shiyue.sources.enabled';
   const CUSTOM_KEY = 'shiyue.sources.custom';
+  const REM_KEY = 'shiyue.sources.removed';
   let readyPromise = null;
 
   function enabledMap() {
@@ -34,13 +35,22 @@
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(slim)); } catch (e) { /* 超限就只保留本次会话 */ }
   }
 
+  // 删掉的书源按 URL 记账，下次加载不再出现（重新导入同一个源会自动恢复）
+  function removedMap() {
+    try { const m = JSON.parse(localStorage.getItem(REM_KEY) || '{}'); return (m && typeof m === 'object') ? m : {}; } catch (e) { return {}; }
+  }
+  function saveRemoved(m) {
+    try { localStorage.setItem(REM_KEY, JSON.stringify(m)); } catch (e) { }
+  }
+
   async function boot() {
     const map = enabledMap();
+    const removed = removedMap();
     const res = await fetch('sources.json', { cache: 'force-cache' });
     const list = await res.json();
     const urls = new Set(list.map(s => s.bookSourceUrl));
     const custom = customList().filter(s => s && (s.bookSourceUrl || s.bookSourceName) && !urls.has(s.bookSourceUrl));
-    const all = list.concat(custom);
+    const all = list.concat(custom).filter(s => !removed[s.bookSourceUrl]);
     all.forEach(s => { s.enabled = map[s._id || s.bookSourceUrl] !== undefined ? map[s._id || s.bookSourceUrl] !== false : (s.enabled !== false); });
     ShuyeEngine.load(all);
     return all;
@@ -86,6 +96,7 @@
         (rank[a._status] ?? 4) - (rank[b._status] ?? 4) || (a.bookSourceName || '').localeCompare(b.bookSourceName || '')
       ).map(s => ({
         id: s._id, name: ShuyeEngine.disp(s.bookSourceName), group: s.bookSourceGroup,
+        url: s.bookSourceUrl,
         host: ShuyeEngine.baseUrl(s).replace(/^https?:\/\//, ''),
         enabled: s.enabled !== false, status: s._status || 'untested',
         ms: s._audit && s._audit.ms, count: s._audit && s._audit.search,
@@ -103,6 +114,30 @@
       const map = enabledMap();
       map[s._id] = s.enabled; saveEnabled(map);
       return { ok: true, enabled: s.enabled };
+    }
+
+    if (path === '/api/sources/delete') {
+      await ensure();
+      const urls = (Array.isArray(body.urls) ? body.urls : [body.url]).filter(Boolean);
+      if (!urls.length) throw new Error('缺少要删除的书源地址');
+      const rm = removedMap();
+      urls.forEach(u => { rm[u] = 1; });
+      saveRemoved(rm);
+      const keep = ShuyeEngine.sources.filter(s => !rm[s.bookSourceUrl]);
+      ShuyeEngine.load(keep);
+      return { ok: true, total: ShuyeEngine.sources.length, removed: urls.length, urls };
+    }
+
+    if (path === '/api/sources/purge') {
+      await ensure();
+      const dead = ShuyeEngine.sources.filter(s => s._status === 'dead' && s.bookSourceUrl);
+      if (!dead.length) return { ok: true, total: ShuyeEngine.sources.length, removed: 0 };
+      const rm = removedMap();
+      dead.forEach(s => { rm[s.bookSourceUrl] = 1; });
+      saveRemoved(rm);
+      const deadUrls = dead.map(s => s.bookSourceUrl);
+      ShuyeEngine.load(ShuyeEngine.sources.filter(s => !rm[s.bookSourceUrl]));
+      return { ok: true, total: ShuyeEngine.sources.length, removed: dead.length, urls: deadUrls };
     }
 
     if (path === '/api/sources/test') {
@@ -166,6 +201,10 @@
       // 新导入的写进 localStorage（同 URL 的旧条目先剔掉），刷新后仍在
       const oldCustom = customList().filter(s => !arr.some(x => x.bookSourceUrl === s.bookSourceUrl));
       saveCustom(oldCustom.concat(arr));
+      // 之前删过的源一旦重新导入，就把它从「已删除」名单里去掉
+      const rm = removedMap();
+      arr.forEach(x => { delete rm[x.bookSourceUrl]; });
+      saveRemoved(rm);
       return { added: arr.length, total: ShuyeEngine.sources.length, skippedJs: jsCount };
     }
 

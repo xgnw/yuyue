@@ -1077,6 +1077,12 @@ function loadSourceList(force){
   LIVE.srcLoading = true;
   api('/api/sources').then(d => {
     LIVE.srcList = d.list || []; LIVE.srcLoading = false;
+    // 列表里的 total/enabled 才是删改后的真实状态，同步给顶部标题和统计卡
+    LIVE.sources = Object.assign({}, LIVE.sources, {
+      total: d.total || (d.list||[]).length,
+      enabled: (d.list||[]).filter(x=>x.enabled).length,
+      ok: (d.list||[]).filter(x=>x.status==='ok').length
+    });
     if(S.view === 'sources') render();
   }).catch(e => { LIVE.srcLoading = false; LIVE.srcList = []; toast('书源列表加载失败：'+e.message); if(S.view==='sources') render(); });
 }
@@ -2109,6 +2115,9 @@ routes.sources = () => {
     <div class="rank-tabs" style="padding:12px 0 8px">
       ${FILTERS.map(([k,n])=>`<button class="r ${f===k?'on':''}" data-act="src-filter" data-k="${k}">${n} ${cnt(k)}</button>`).join('')}
     </div>
+    ${cnt('dead') ? `<div style="display:flex;justify-content:flex-end;padding:0 2px 8px">
+      <button class="btn ghost" style="height:30px;font-size:11.5px" data-act="purge-dead">${ic('trash','ico sm')} 清理失效 ${cnt('dead')} 个</button>
+    </div>` : ''}
     ${LIVE.srcLoading?`<div class="skel"></div><div class="skel"></div>`:''}
     ${list.map(s=>`
       <div class="src-row">
@@ -2118,6 +2127,7 @@ routes.sources = () => {
           <div class="hs">${esc(s.host||'')}${s.count?` · 搜索 ${s.count} 条`:''}${s.chars?` · 正文 ${s.chars} 字`:''}${s.ms?` · ${s.ms}ms`:''}</div>
         </div>
         <button class="btn ghost" style="height:28px;padding:0 9px;font-size:11px;border-radius:8px" data-act="test-source" data-id="${s.id}">测试</button>
+        <button class="icon-btn" style="width:28px;height:28px;flex:0 0 auto;color:#9AA3B8" data-act="del-source" data-url="${esc(s.url||'')}" data-name="${esc(s.name||'')}" title="删除书源">${ic('trash','ico sm')}</button>
         <button class="switch ${s.enabled?'on':''}" data-act="toggle-source" data-id="${s.id}"><i></i></button>
       </div>`).join('')}
     <div class="spacer-b"></div>
@@ -2323,6 +2333,29 @@ const ACTIONS = {
       .then(()=>{ const s = (LIVE.srcList||[]).find(x=>x.id===id); if(s) s.enabled = on;
         LIVE.sources.enabled = (LIVE.srcList||[]).filter(x=>x.enabled).length; render(); })
       .catch(e => toast('切换失败：' + e.message));
+  },
+  'del-source'(el){
+    const url = el.dataset.url, name = el.dataset.name;
+    if(!url) return;
+    if(!confirm(`删除书源「${name}」？\n删除后不再参与搜索，重新导入同一个源可以恢复。`)) return;
+    api('/api/sources/delete', {method:'POST', body:{urls:[url]}})
+      .then(d => {
+        LIVE.srcList = null; LIVE.sources = Object.assign({}, LIVE.sources, {total:d.total});
+        toast(`已删除「${name}」，剩 ${d.total} 个书源`); if(S.view==='sources') loadSourceList();
+      })
+      .catch(e => toast('删除失败：' + e.message));
+  },
+  'purge-dead'(){
+    const dead = (LIVE.srcList||[]).filter(x=>x.status==='dead');
+    if(!dead.length) return toast('当前没有失效书源');
+    if(!confirm(`删除 ${dead.length} 个失效书源？\n删除后不再出现在列表里，重新导入合集可以恢复。`)) return;
+    toast('正在清理…');
+    api('/api/sources/purge', {method:'POST', body:{}})
+      .then(d => {
+        LIVE.srcList = null; LIVE.sources = Object.assign({}, LIVE.sources, {total:d.total});
+        toast(`已清理 ${d.removed} 个失效书源，剩 ${d.total} 个`); if(S.view==='sources') loadSourceList();
+      })
+      .catch(e => toast('清理失败：' + e.message));
   },
   'test-source'(el){
     const id = el.dataset.id;
