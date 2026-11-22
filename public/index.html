@@ -2338,7 +2338,7 @@ const ACTIONS = {
     toast('正在导入…');
     api('/api/sources/import', {method:'POST', body:payload}).then(d => {
       closeModal();
-      toast(`已导入 ${d.added} 个，共 ${d.total} 个`);
+      toast(`已导入 ${d.added} 个，共 ${d.total} 个${d.skippedJs ? `（跳过 ${d.skippedJs} 个 JS 源）` : ''}`);
       LIVE.srcList = null; loadSourceList();
     }).catch(e => toast('导入失败：' + e.message));
   },

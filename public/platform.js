@@ -11,6 +11,7 @@
   'use strict';
 
   const EN_KEY = 'shiyue.sources.enabled';
+  const CUSTOM_KEY = 'shiyue.sources.custom';
   let readyPromise = null;
 
   function enabledMap() {
@@ -19,14 +20,30 @@
   function saveEnabled(map) {
     localStorage.setItem(EN_KEY, JSON.stringify(map));
   }
+  // 用户自己导入的书源存本地，刷新后还在
+  function customList() {
+    try { const a = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function saveCustom(list) {
+    // 只留必要的几个字段，避免 localStorage 超限
+    const slim = list.map(s => ({
+      bookSourceName: s.bookSourceName, bookSourceUrl: s.bookSourceUrl, bookSourceGroup: s.bookSourceGroup,
+      enabled: s.enabled !== false, searchUrl: s.searchUrl,
+      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent
+    }));
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(slim)); } catch (e) { /* 超限就只保留本次会话 */ }
+  }
 
   async function boot() {
     const map = enabledMap();
     const res = await fetch('sources.json', { cache: 'force-cache' });
     const list = await res.json();
-    list.forEach(s => { s.enabled = map[s._id] !== undefined ? map[s._id] !== false : (s.enabled !== false); });
-    ShuyeEngine.load(list);
-    return list;
+    const urls = new Set(list.map(s => s.bookSourceUrl));
+    const custom = customList().filter(s => s && (s.bookSourceUrl || s.bookSourceName) && !urls.has(s.bookSourceUrl));
+    const all = list.concat(custom);
+    all.forEach(s => { s.enabled = map[s._id || s.bookSourceUrl] !== undefined ? map[s._id || s.bookSourceUrl] !== false : (s.enabled !== false); });
+    ShuyeEngine.load(all);
+    return all;
   }
 
   function ensure() {
@@ -104,11 +121,52 @@
 
     if (path === '/api/sources/import') {
       await ensure();
-      const arr = body.json ? (Array.isArray(body.json) ? body.json : [body.json]) : [];
-      if (!arr.length) throw new Error('只支持粘贴书源 JSON（云端版不代抓远程地址）');
-      const merged = ShuyeEngine.sources.filter(s => !arr.some(x => x.bookSourceUrl === s.bookSourceUrl));
-      ShuyeEngine.load(merged.concat(arr));
-      return { added: arr.length, total: ShuyeEngine.sources.length };
+      let arr = [];
+      if (body.json) {
+        arr = Array.isArray(body.json) ? body.json : [body.json];
+      } else if (body.url) {
+        // 云端版没有服务器，用 Worker 的 /p 代理去拉 JSON（同域，不受 CORS 限制）
+        let resp;
+        try {
+          resp = await fetch('/p?u=' + encodeURIComponent(body.url), { headers: { accept: 'application/json,*/*' } });
+        } catch (e) {
+          throw new Error('拉取书源地址失败：' + (e.message || e));
+        }
+        if (!resp.ok) throw new Error('拉取书源失败：HTTP ' + resp.status);
+        const txt = await resp.text();
+        let data;
+        try {
+          data = JSON.parse(txt);
+        } catch (e) {
+          throw new Error('该地址返回的是网页不是 JSON，请填书源 JSON 导出地址（如 …/shuyuan/json）');
+        }
+        arr = Array.isArray(data) ? data : [data];
+        // 兼容 {sources:[...]} / {data:[...]} / {list:[...]} 这类包一层的合集
+        if (arr.length <= 1 && !(arr[0] && (arr[0].bookSourceUrl || arr[0].bookSourceName))) {
+          const inner = data && (data.sources || data.data || data.list);
+          if (Array.isArray(inner)) arr = inner;
+        }
+        arr = arr.filter(x => x && (x.bookSourceUrl || x.bookSourceName));
+      }
+      if (!arr.length) throw new Error('没有解析到书源，请检查地址或粘贴 JSON');
+      // 过滤掉跑不了的 JS 源（Worker/浏览器都不能 eval），并去掉重复 URL
+      const bad = s => ['searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent'].some(k => {
+        const v = s[k];
+        if (typeof v === 'string') return /(@js:|<js>|java\.)/.test(v);
+        if (v && typeof v === 'object') return Object.values(v).some(x => typeof x === 'string' && /(@js:|<js>|java\.)/.test(x));
+        return false;
+      });
+      const jsCount = arr.filter(bad).length;
+      arr = arr.filter(s => !bad(s));
+      const seen = new Set();
+      arr = arr.filter(s => { const u = s.bookSourceUrl || ''; if (seen.has(u)) return false; seen.add(u); return true; });
+      if (!arr.length) throw new Error(`全部 ${jsCount} 个源都用了 JS 规则，云端版跑不了`);
+      const rest = ShuyeEngine.sources.filter(s => !arr.some(x => x.bookSourceUrl === s.bookSourceUrl));
+      ShuyeEngine.load(rest.concat(arr));
+      // 新导入的写进 localStorage（同 URL 的旧条目先剔掉），刷新后仍在
+      const oldCustom = customList().filter(s => !arr.some(x => x.bookSourceUrl === s.bookSourceUrl));
+      saveCustom(oldCustom.concat(arr));
+      return { added: arr.length, total: ShuyeEngine.sources.length, skippedJs: jsCount };
     }
 
     if (path === '/api/search') { await ensure(); return handleSearch(q); }
