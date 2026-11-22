@@ -13,6 +13,7 @@
   const EN_KEY = 'shiyue.sources.enabled';
   const CUSTOM_KEY = 'shiyue.sources.custom';
   const REM_KEY = 'shiyue.sources.removed';
+  const ST_KEY = 'shiyue.sources.status';
   let readyPromise = null;
 
   function enabledMap() {
@@ -44,15 +45,30 @@
     try { localStorage.setItem(REM_KEY, JSON.stringify(m)); } catch (e) { }
   }
 
+  // 手动测试出来的状态（按 URL 记），刷新后仍然生效，也用于排序和「清理失效」
+  function statusMap() {
+    try { const m = JSON.parse(localStorage.getItem(ST_KEY) || '{}'); return (m && typeof m === 'object') ? m : {}; } catch (e) { return {}; }
+  }
+  function saveStatus(url, status) {
+    const m = statusMap();
+    m[url] = status;
+    try { localStorage.setItem(ST_KEY, JSON.stringify(m)); } catch (e) { }
+  }
+
   async function boot() {
     const map = enabledMap();
     const removed = removedMap();
+    const st = statusMap();
     const res = await fetch('sources.json', { cache: 'force-cache' });
     const list = await res.json();
     const urls = new Set(list.map(s => s.bookSourceUrl));
     const custom = customList().filter(s => s && (s.bookSourceUrl || s.bookSourceName) && !urls.has(s.bookSourceUrl));
     const all = list.concat(custom).filter(s => !removed[s.bookSourceUrl]);
-    all.forEach(s => { s.enabled = map[s._id || s.bookSourceUrl] !== undefined ? map[s._id || s.bookSourceUrl] !== false : (s.enabled !== false); });
+    all.forEach(s => {
+      s.enabled = map[s._id || s.bookSourceUrl] !== undefined ? map[s._id || s.bookSourceUrl] !== false : (s.enabled !== false);
+      const t = s.bookSourceUrl && st[s.bookSourceUrl];
+      if (t) s._status = t;
+    });
     ShuyeEngine.load(all);
     return all;
   }
@@ -149,8 +165,14 @@
       try {
         const rs = await ShuyeEngine.searchOne(s, body.key || '剑来', 1);
         const ms = Math.round(performance.now() - t0);
-        return { ok: rs.length > 0, count: rs.length, ms, sample: rs[0] ? rs[0].name : '', status: rs.length ? 'ok' : 'dead' };
+        // 只测了搜索这一环：能搜到就算「至少可搜索」，原来全链路可用的继续保持
+        const status = rs.length ? (s._status === 'ok' ? 'ok' : 'part') : 'dead';
+        s._status = status;
+        if (s.bookSourceUrl) saveStatus(s.bookSourceUrl, status);
+        return { ok: rs.length > 0, count: rs.length, ms, sample: rs[0] ? rs[0].name : '', status };
       } catch (e) {
+        s._status = 'dead';
+        if (s.bookSourceUrl) saveStatus(s.bookSourceUrl, 'dead');
         return { ok: false, err: String(e.message || e).slice(0, 80), status: 'dead' };
       }
     }
