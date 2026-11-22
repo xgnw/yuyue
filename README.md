@@ -35,6 +35,7 @@ public/
   engine.js       浏览器内的书源规则引擎（XPath/CSS/JSONPath 子集）
   platform.js     /api/* 分派：搜索目录正文交给 engine，缓存交给 IndexedDB
   cache-idb.js    IndexedDB 整本缓存，接口形状与本地版 server.py 一致
+  infer.js        从小说详情页链接自动推断规则、生成 Legado 书源（造源器）
   sources.json    过滤后的书源清单（303KB / 244 源，可直接提交）
 worker/
   index.js        /p 抓取代理、/api/img 封面代理、其余交给静态资源
@@ -125,6 +126,51 @@ node scripts/merge-export.mjs 愉阅书源-2026-11-21.json --sync   # 仓库清�
 * 失败的源自动重试一次，避免源站偶发超时被误判；
 * 跑的过程中按钮变成「停止测试」，点一下会等当前几个测完再收尾；
 * 结果按 URL 记在 `localStorage`（键 `shiyue.sources.status`），刷新、换页都保持，也参与排序和「清理失效」。
+
+### 从详情页链接造源（不依赖第三方书源合集）
+
+书源管理页有一行按钮：「导入书源 | **造源** | 导出」。
+
+点「造源」，把小说**详情页**链接粘进去（一行一个，最多 3 个），例如：
+
+```
+http://www.ujxsw.org/book/2904/
+http://m.biqusk.info/13_13555/
+```
+
+它会依次抓取详情页、目录页、首章和搜索页，推断出书源规则，弹出识别报告卡：
+
+```
+ujxsw.org · 剑来
+目录 1313 章 · 正文约 2676 字 · 搜索命中 50 条
+搜索地址: searchbooks.php?searchkey={{key}}
+[导入并测试]
+```
+
+点「导入并测试」→ 写进本机书源列表（分组「自建」）→ 立刻跑一次搜索验证，结果直接显示。
+
+**推断的流程**（`public/infer.js`，全部在浏览器里做，抓页走 Worker `/p`）：
+
+1. 详情页：书名、作者、简介、封面；找「目录/章节」入口并记下选择器；
+2. 目录页：按 href 形状（数字抹成 `#`）给章节锚点聚类，挑出最像"章节目录"的那个容器，
+   并用「列表项签名」把 `div.shulist li.three` 这类精确项选出来（名称/链接取 `a.0@text` / `a.0@href`）；
+3. 首章：定位正文容器（按中文字数打分）和「下一页」链接；
+4. 搜索：优先读站内搜索表单的 action + 字段名，没有就试常见路径；
+5. 产出标准 Legado 书源 JSON：`searchUrl`（POST 表单写成 `path,{"method":"POST","body":"..."}`）、
+   `ruleSearch / ruleBookInfo / ruleToc / ruleContent`，`bookSourceUrl` 取详情页 origin；全流程不使用 `@js:`。
+
+**实测**（两个真实站点，2026-11）：
+
+| 站点 | 书名 | 目录 | 正文 | 搜索 |
+| --- | --- | --- | --- | --- |
+| 悠久小说网 `www.ujxsw.org`（GBK） | 剑来 | 1313 章 | 3079 字 | 8 条命中 |
+| 必去书库 `m.biqusk.info` | 剑来 | 25 章 | 1760 字 | 8 条命中 |
+
+**注意**：
+
+* 只支持**普通 HTML 站点**；详情页/目录页靠 JS 渲染、或搜索必须带签名的站，识别会失败（报告卡里会写原因）；
+* 生成的源只进你这台设备的书源列表，要全局生效按上一节的「导出 → merge-export」走；
+* 想批量造源：把「最多 3 个」的上限改大即可（`index.html` 里 `make-run` 的 `slice(0,3)`）。
 
 ### 删掉没用的书源
 

@@ -265,10 +265,47 @@
     throw new Error('未知接口：' + path);
   }
 
+  /* 抓整页 HTML（造源用）：走 Worker 的 /p 代理，自己按 charset 解码 */
+  function decodeText(buf, ctype) {
+    const bytes = new Uint8Array(buf);
+    let cs = ((ctype || '').match(/charset=([\w-]+)/i) || [])[1];
+    if (!cs) {
+      const head = new TextDecoder('utf-8').decode(bytes.slice(0, 2048));
+      const m = head.match(/charset\s*=\s*["']?([\w-]+)/i);
+      cs = m ? m[1] : 'utf-8';
+    }
+    cs = String(cs).toLowerCase();
+    if (/^(gb2312|gbk|gb18030)$/.test(cs)) cs = 'gbk';
+    try { return new TextDecoder(cs).decode(bytes); } catch (e) { return new TextDecoder('utf-8').decode(bytes); }
+  }
+
+  async function fetchPage(url, referer, opt) {
+    const init = {
+      method: (opt && opt.method) || 'GET',
+      headers: { accept: 'text/html,application/xhtml+xml,*/*;q=0.8' }
+    };
+    let target = '/p?u=' + encodeURIComponent(url) + (referer ? '&r=' + encodeURIComponent(referer) : '');
+    if (init.method === 'POST') {
+      target = '/p?r=' + encodeURIComponent(referer || new URL(url).origin + '/');
+      init.headers['x-target'] = url;
+      init.headers['content-type'] = 'application/x-www-form-urlencoded';
+      init.body = (opt && opt.body) || '';
+    }
+    const res = await fetch(target, init);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const buf = await res.arrayBuffer();
+    return {
+      text: decodeText(buf, res.headers.get('content-type')),
+      url: res.headers.get('x-final-url') || url,
+      status: res.status
+    };
+  }
+
   global.PLAT = {
     mode: 'cloudflare',
     call,
     ready: ensure,
+    fetchPage,
     book: (src, url) => call(`/api/book?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}`),
     content: (src, url, bookUrl) => call(`/api/content?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}&book=${encodeURIComponent(bookUrl || '')}`).then(x => x.text)
   };
