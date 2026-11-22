@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#F4F6FC">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="拾页">
-<link rel="manifest" href='data:application/manifest+json,{"name":"拾页 · 纯净阅读器","short_name":"拾页","start_url":".","display":"standalone","background_color":"%23F3F5FB","theme_color":"%23274AFF"}'>
-<title>拾页 · 纯净阅读器</title>
+<meta name="apple-mobile-web-app-title" content="愉阅">
+<link rel="manifest" href='data:application/manifest+json,{"name":"愉阅 · 纯净阅读器","short_name":"愉阅","start_url":".","display":"standalone","background_color":"%23F3F5FB","theme_color":"%23274AFF"}'>
+<title>愉阅 · 纯净阅读器</title>
 <style>
 /* ==========================================================================
-   拾页 · 设计令牌
+   愉阅 · 设计令牌
    参考「必访」的配色（主色 #274AFF）与信息结构，重绘为浅色阅读类 App。
    ========================================================================== */
 :root{
@@ -561,7 +561,7 @@ body.dark .reader{box-shadow:none}
 
 <script>
 /* ==========================================================================
-   拾页 · 单文件阅读 App
+   愉阅 · 单文件阅读 App
    结构：数据层 -> 持久化 -> 视图层 -> 事件 -> 路由
    说明：演示数据为原创短篇，书源引擎为可插拔模拟实现（见 README）。
    ========================================================================== */
@@ -683,7 +683,7 @@ const BOOKS = [
 
 /* 搜索用的“外部书源”演示：只展示聚合结果，不产生真实抓取 */
 const SOURCES = [
-  {id:'s0', name:'拾页书库', host:'shiyue.local', pure:true, builtin:true},
+  {id:'s0', name:'愉阅书库', host:'shiyue.local', pure:true, builtin:true},
   {id:'s1', name:'云雀书城', host:'yunque-books.example', pure:true, builtin:false},
   {id:'s2', name:'青简阁', host:'qingjian.example', pure:false, builtin:false},
   {id:'s3', name:'墨雨阁', host:'moyu-reader.example', pure:true, builtin:false}
@@ -703,7 +703,7 @@ const SEED_POSTS = [
     {user:'不睡觉的鱼', text:'还有忘了配角是谁，但不敢往回翻', time:'12分钟前'},
     {user:'晚风', text:'所以我一般只看短篇（认真', time:'8分钟前'}
   ]},
-  {id:'p4', user:'拾页编辑部', ava:'拾', time:'2小时前', topic:'# 书单共创', text:'本周书单：《剑照山河》《春日迟》《第九次日落》。\n\n三本风格完全不一样，但都适合在通勤的地铁上读一章。评论区留下你的一章书单。', likes:57, liked:false, comments:[]}
+  {id:'p4', user:'愉阅编辑部', ava:'拾', time:'2小时前', topic:'# 书单共创', text:'本周书单：《剑照山河》《春日迟》《第九次日落》。\n\n三本风格完全不一样，但都适合在通勤的地铁上读一章。评论区留下你的一章书单。', likes:57, liked:false, comments:[]}
 ];
 
 /* ------------------------- 3. 持久化存储 ------------------------- */
@@ -763,7 +763,7 @@ const hashCode = s => { let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h+s.char
 /* ==========================================================================
    4.1 本地书源服务（/api）
    --------------------------------------------------------------------------
-   浏览器受同源策略限制，没法直接抓第三方站点；拾页-书源版由 server.py 代理：
+   浏览器受同源策略限制，没法直接抓第三方站点；愉阅-书源版由 server.py 代理：
    导入的阅读(Legado)书源 JSON → 本地规则引擎解析 → 搜索/目录/正文经 /api 返回。
    直接用 file:// 打开时自动指向 127.0.0.1:5188；服务没起则退回离线演示书库。
    ========================================================================== */
@@ -1385,7 +1385,7 @@ routes.home = () => {
     <div class="home-head">
       <div class="brandline">
         <div class="logo">拾</div>
-        <div class="name">拾页</div>
+        <div class="name">愉阅</div>
         <div class="sub">纯净阅读</div>
         <div class="right">
           <button class="icon-btn" data-act="toggle-dark" title="夜间模式">${ic('sun','ico')}</button>
@@ -1604,7 +1604,7 @@ routes.search = () => {
     ${!LIVE.online && !LIVE.checking && q ? `
       <div class="notice">
         <div class="nt">本地书源服务没连上</div>
-        <div class="nd">在「拾页-书源版」目录里执行 <b>python server.py</b>，再刷新本页，就能用导入的阅读书源搜全网。现在只搜本机 ${allBooks().length} 本（原创短篇 + 你导入的 TXT）。</div>
+        <div class="nd">在「愉阅-书源版」目录里执行 <b>python server.py</b>，再刷新本页，就能用导入的阅读书源搜全网。现在只搜本机 ${allBooks().length} 本（原创短篇 + 你导入的 TXT）。</div>
         <div class="nacts">
           <button class="btn ghost" data-act="retry-online">${ic('wifi','ico sm')} 重连服务</button>
           <button class="btn ghost" data-act="import-txt">${ic('upload','ico sm')} 导入本地 TXT</button>
@@ -1729,7 +1729,7 @@ routes.book = () => {
         <p class="${expanded}">${esc(b.intro || '这个书源没有给出简介。')}</p>
         <div class="divider" style="margin:10px 0"></div>
         <div style="font-size:11.5px;color:var(--muted);display:flex;justify-content:space-between">
-          <span>来源：${b.remote?esc(b.sourceName||'在线书源'):'拾页书库（内置）'}</span>
+          <span>来源：${b.remote?esc(b.sourceName||'在线书源'):'愉阅书库（内置）'}</span>
           <span>${b.remote?'在线正文 · 纯净排版':'纯净模式可读'}</span>
         </div>
       </div>
@@ -1985,12 +1985,12 @@ routes.me = () => {
       </div>
       <div class="me-row" data-act="go-about">
         <div class="ic">${ic('book','ico')}</div>
-        <div class="tx"><div>关于拾页</div><div class="s">功能复刻说明与版本信息</div></div>
+        <div class="tx"><div>关于愉阅</div><div class="s">功能复刻说明与版本信息</div></div>
         <span class="chev">${ic('chev','ico sm')}</span>
       </div>
     </div>
     <div style="text-align:center;font-size:10.5px;color:var(--muted);padding:6px 0 20px;line-height:1.8">
-      拾页 v1.0 · 演示版<br>内容与书源均为本地演示数据
+      愉阅 v1.0 · 演示版<br>内容与书源均为本地演示数据
     </div>
     <div class="spacer-b"></div>
   </div>
@@ -2060,7 +2060,7 @@ routes.sources = () => {
     <div class="scroll pad">
       <div class="notice">
         <div class="nt">本地服务未连接</div>
-        <div class="nd">书源解析需要本地服务（浏览器不能跨域抓站）。在「拾页-书源版」目录执行 <b>python server.py</b>，然后刷新。</div>
+        <div class="nd">书源解析需要本地服务（浏览器不能跨域抓站）。在「愉阅-书源版」目录执行 <b>python server.py</b>，然后刷新。</div>
         <div class="nacts"><button class="btn ghost" data-act="retry-online">${ic('wifi','ico sm')} 重连</button></div>
       </div>
       <div class="spacer-b"></div>
@@ -2112,12 +2112,12 @@ routes.sources = () => {
 routes.about = () => `
   <div class="bar solid">
     <button class="icon-btn" data-act="tab" data-tab="me">${ic('back','ico')}</button>
-    <div class="title">关于拾页</div>
+    <div class="title">关于愉阅</div>
   </div>
   <div class="scroll pad">
     <div style="text-align:center;padding:26px 0 10px">
       <div class="logo" style="width:64px;height:64px;border-radius:18px;font-size:30px;margin:0 auto">拾</div>
-      <div style="font-size:18px;font-weight:800;margin-top:12px">拾页</div>
+      <div style="font-size:18px;font-weight:800;margin-top:12px">愉阅</div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:4px">v1.0 演示版 · 单文件 Web App</div>
     </div>
     <div class="card" style="padding:16px;font-size:12.5px;line-height:1.9;color:#4E5670">
@@ -2494,7 +2494,7 @@ const ACTIONS = {
     const p = S.posts.find(x=>x.id===el.dataset.id); if(!p) return;
     p.liked = !p.liked; p.likes += p.liked?1:-1; save(); render();
   },
-  'share-post'(){ navigator.clipboard?.writeText('拾页社区 · 一起读点好的').catch(()=>{}); toast('已复制分享文案'); },
+  'share-post'(){ navigator.clipboard?.writeText('愉阅社区 · 一起读点好的').catch(()=>{}); toast('已复制分享文案'); },
   'add-post'(){
     window.__postTopic = '# 读书随想';
     const topics = ['# 读书随想','# 必须推荐的一本小说','# 精准吐槽','# 书单共创'];
@@ -2615,7 +2615,7 @@ window.addEventListener('beforeunload', ()=>{ save(); });
   render();
   // 首次访问提示
   if(!Store.get()){
-    setTimeout(()=>toast('欢迎使用拾页 · 演示书库已就绪'), 600);
+    setTimeout(()=>toast('欢迎使用愉阅 · 演示书库已就绪'), 600);
   }
 })();
 </script>

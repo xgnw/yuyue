@@ -1,4 +1,4 @@
-# 拾页 · Vercel 版
+# 愉阅 · Vercel 版
 
 书源聚合阅读器，规则引擎沿用本地版那套 Python（`srlib.py` + lxml），
 用一个 Flask 函数把它包成 `/api/*` 接口，前端静态页面照旧。
