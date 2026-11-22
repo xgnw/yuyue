@@ -1,0 +1,12 @@
+name = "shiye"
+main = "worker/index.js"
+compatibility_date = "2025-06-01"
+
+# 静态资源：public/ 下的 index.html、engine.js、platform.js、cache-idb.js、sources.json
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# 本地调试（可选）：wrangler dev 默认 8787
+[dev]
+port = 8787
