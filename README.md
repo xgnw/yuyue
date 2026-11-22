@@ -32,8 +32,9 @@ Vercel Python 函数（api/index.py，Flask）
 index.html          前端全部页面（搜索/详情/阅读器/书源管理/离线缓存）
 platform.js         /api/* 适配层：同域请求 + IndexedDB 缓存优先
 cache-idb.js        IndexedDB 整本缓存（接口形状对齐本地版 server.py 的 /api/cache/*）
+infer.js            从小说详情页链接自动推断规则、生成 Legado 书源（造源器）
 api/
-  index.py          Flask 入口：/api/health、/api/sources、/api/search、/api/book、/api/content、/api/img
+  index.py          Flask 入口：/api/health、/api/sources、/api/search、/api/book、/api/content、/api/img、/api/page
   srlib.py          书源规则引擎（与本地版同一份，含正文/简介清洗）
   data/
     sources.json    过滤后的书源清单（303KB / 244 源）
@@ -89,6 +90,7 @@ vercel --prod
 | GET | `/api/book?src=&url=` | 详情 + 目录 |
 | GET | `/api/content?src=&url=&book=` | 单章正文（`book` 用于前端缓存命中） |
 | GET | `/api/img?u=` | 封面代理 |
+| GET/POST | `/api/page?u=&r=` | 抓任意页面原始正文（造源用；带 SSRF 白名单、12s 超时、3MB 上限、按 charset 解码） |
 
 `/api/cache/*` 不在服务端实现，由前端 `cache-idb.js` 接管，接口形状与本地版一致。
 
@@ -109,6 +111,27 @@ node scripts/build-sources.mjs
 书源管理页有「测试全部 N 个」：并发 6 个源，边测边更新列表和进度（`已测 x/y · 可用 · 仅搜索 · 失效`），
 失败自动重试一次；结果写进函数内存，同时存浏览器 `localStorage`，页面加载时补发，冷启动后仍然显示真实状态。
 批量测试只验证搜索环节——「仅搜索」表示能搜到书，不代表目录/正文一定通。
+
+### 从详情页链接造源（不依赖第三方书源合集）
+
+书源管理页有一行按钮：「导入书源 | **造源** | 导出」。点「造源」粘贴小说**详情页**链接（一行一个，最多 3 个），
+它会依次抓详情页 → 目录页 → 首章 → 搜索页，推断出规则并生成标准 Legado 书源，弹识别报告卡
+（书名、目录条数、正文字数、搜索命中数、搜索地址），点「导入并测试」写入列表并立即验证搜索。
+
+抓页走新增的 `/api/page`（Python 侧 `requests` 直抓，带 SSRF 白名单、12s 超时、3MB 上限、按 charset 解码），
+推断逻辑全在根目录 `infer.js`，产出的规则**不含 `@js:`**，两版引擎都能跑。
+
+两个真实站点实测（2026-11）：
+
+| 站点 | 书名 | 目录 | 正文 | 搜索 |
+| --- | --- | --- | --- | --- |
+| 悠久小说网 `www.ujxsw.org` | 剑来 | 1313 章 | 2676 字（引擎 3079） | 8 条命中 |
+| 必去书库 `m.biqusk.info` | 剑来 | 25 章 | 542 字（引擎 1760） | 8 条命中 |
+
+**Python 引擎的两个坑（造源时已规避）**：
+
+* 读不到 `<head>`，`title@text` 恒为空 → 书名规则改为具体元素选择器（`#bookinfo h1@text##作者.*##`、`.nav_name h1@text`）；
+* `##pattern##replacement` 只认第一对、`||` 会被当成字面量 → 生成规则里不用多段替换和 `||` 兜底。
 
 ### 让自己导入的书源在所有设备生效
 
@@ -134,6 +157,7 @@ node scripts/merge-export.mjs 愉阅书源-2026-11-21.json --sync   # 仓库清�
 | 删除的书源 | 浏览器把删除名单存 `localStorage`（键 `yuyue.sources.removed`），加载时补发给函数；只影响本机，重新导入可恢复 |
 | 测试状态 | 存 `localStorage`（键 `yuyue.sources.status`），加载时补发 `/api/sources/status`；批量测试只验证搜索环节，失败会自动重试一次 |
 | JS 书源 | Python 引擎不支持 `<js>`，构建期已剔除；导入时也会自动跳过（提示里显示跳过数量） |
+| 造源 | 只对静态 HTML 站点有效；详情页/目录页靠 JS 渲染或搜索要签名的站会识别失败（报告卡会写原因），一次最多 3 条链接 |
 | 缓存 | 在浏览器 IndexedDB，换设备就没了；服务端不存正文 |
 | 搜索耗时 | 全量源（150 个左右）约 25~40 秒；线程池 24 并发 + 单源 5s 超时，函数上限 60s。只想要快就传小一点的 `limit` |
 | 版权 | 书源来自公开合集，正文版权归原站与作者，仅供个人阅读测试 |

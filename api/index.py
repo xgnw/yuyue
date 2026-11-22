@@ -408,6 +408,66 @@ def api_content():
     return jsonify({'text': S.content(src, url, timeout=15)})
 
 
+PRIVATE_PREFIX = ('127.', '0.', '10.', '192.168.', '169.254.', '::1')
+
+
+def safe_target(u):
+    """造源代理只允许公网 http(s)，挡住内网与 meta 地址（与 Worker /p 同一套白名单）"""
+    p = urlparse(u)
+    if p.scheme not in ('http', 'https') or not p.hostname:
+        return False
+    host = p.hostname.lower()
+    if host in ('localhost', '::1') or host.endswith('.local') or host.endswith('.internal'):
+        return False
+    if host.startswith(PRIVATE_PREFIX):
+        return False
+    if re.match(r'^172\.(1[6-9]|2[0-9]|3[01])\.', host):
+        return False
+    return True
+
+
+def decode_html(raw, ctype):
+    """按 header / <meta charset> 判断编码，GBK 系站点也能正确解出中文"""
+    m = re.search(r'charset=([\w-]+)', ctype or '', re.I)
+    cs = m.group(1) if m else ''
+    if not cs:
+        m = re.search(rb'charset\s*=\s*["\']?([\w-]+)', raw[:2048], re.I)
+        cs = m.group(1).decode('ascii', 'ignore') if m else ''
+    cs = (cs or 'utf-8').lower()
+    if cs in ('gb2312', 'gbk', 'gb18030'):
+        cs = 'gbk'
+    try:
+        return raw.decode(cs, 'replace')
+    except LookupError:
+        return raw.decode('utf-8', 'replace')
+
+
+@app.route('/api/page', methods=['GET', 'POST'])
+def api_page():
+    """造源用的整页抓取：返回 {url, status, text}"""
+    u = request.args.get('u') or ''
+    ref = request.args.get('r') or ''
+    if not u or not safe_target(u):
+        return jsonify({'error': 'unsupported url'}), 400
+    method = 'POST' if request.method == 'POST' else 'GET'
+    body = request.get_data() if method == 'POST' else None
+    try:
+        headers = {'User-Agent': UA, 'Accept': 'text/html,application/xhtml+xml,*/*;q=0.8'}
+        if ref and safe_target(ref):
+            headers['Referer'] = ref
+        if method == 'POST':
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        r = requests.request(method, u, data=body, headers=headers, timeout=12, allow_redirects=True)
+        raw = r.content[:3 * 1024 * 1024]
+        return jsonify({
+            'url': r.url,
+            'status': r.status_code,
+            'text': decode_html(raw, r.headers.get('Content-Type') or '')
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)[:90]}), 502
+
+
 @app.route('/api/img')
 def api_img():
     u = request.args.get('u') or ''

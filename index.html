@@ -557,6 +557,7 @@ body.dark .reader{box-shadow:none}
 
 <!-- 数据层：离线缓存（IndexedDB）+ 书源引擎 + 平台适配 -->
 <script src="cache-idb.js"></script>
+<script src="infer.js"></script>
 <script src="platform.js"></script>
 
 <script>
@@ -2090,11 +2091,13 @@ routes.sources = () => {
   <div class="scroll pad">
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn line" style="flex:1;min-width:0;margin:0;white-space:nowrap" data-act="import-source">${ic('plus','ico sm')} 导入书源</button>
-      <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 16px;white-space:nowrap" data-act="export-sources" title="导出当前书源清单">${ic('share','ico sm')} 导出</button>
+      <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 14px;white-space:nowrap" data-act="make-source" title="粘贴小说详情页链接，自动推断规则并造源">${ic('edit','ico sm')} 造源</button>
+      <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 14px;white-space:nowrap" data-act="export-sources" title="导出当前书源清单">${ic('share','ico sm')} 导出</button>
     </div>
     <div style="font-size:11px;color:var(--muted);padding:8px 2px 2px;line-height:1.8">
       导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
       含 @js / @webview / 需登录的书源云端跑不了，导入时会自动跳过。
+      点「造源」可以直接粘贴小说详情页链接，自动识别目录/正文/搜索并生成书源。
       「导出」得到的是当前生效的整份清单，可合并进仓库让所有设备共用。
     </div>
     <div class="card" style="padding:14px;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.8">
@@ -2454,6 +2457,68 @@ const ACTIONS = {
       toast(`已导入 ${d.added} 个，共 ${d.total} 个${d.skippedJs ? `（跳过 ${d.skippedJs} 个 JS 源）` : ''}`);
       LIVE.srcList = null; loadSourceList();
     }).catch(e => toast('导入失败：' + e.message));
+  },
+  'make-source'(){
+    modal(`<h4 style="text-align:left">从链接造源</h4>
+      <div style="font-size:11.5px;color:#8B93A8;margin:2px 0 10px;line-height:1.7">
+        粘贴小说<strong>详情页</strong>链接，一行一个（最多 3 个）。会自动抓取页面，推断目录、章节列表、正文容器和站内搜索，
+        生成可直接使用的阅读(Legado)书源。
+      </div>
+      <textarea id="mk-urls" class="field" rows="4" placeholder="http://www.ujxsw.org/book/2904/"></textarea>
+      <div class="acts">
+        <button class="btn line" data-act="close-modal">取消</button>
+        <button class="btn primary" data-act="make-run">开始识别</button>
+      </div>
+      <div id="mk-out" style="text-align:left;font-size:11.5px;color:#6B7488;line-height:1.7;max-height:40vh;overflow:auto"></div>`);
+  },
+  'make-run'(){
+    const box = $('#mk-out'), btn = $('[data-act="make-run"]');
+    const urls = ($('#mk-urls')?.value || '').split(/[\s\n,，]+/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+    if(!urls.length) return toast('先粘贴详情页链接');
+    if(!window.SourceInfer) return toast('识别模块未加载，请刷新重试');
+    if(btn){ btn.disabled = true; btn.textContent = '识别中…'; }
+    box.innerHTML = '<div style="padding:6px 0">正在抓取页面，通常 5~15 秒…</div>';
+    (async () => {
+      const out = [];
+      for(const u of urls){
+        box.innerHTML += `<div style="padding:2px 0;word-break:break-all">· ${esc(u)}</div>`;
+        try{ out.push(Object.assign({ url:u }, await SourceInfer.inferFromUrl(u))); }
+        catch(e){ out.push({ url:u, error:String((e && e.message) || e) }); }
+      }
+      LIVE.made = out;
+      box.innerHTML = out.map((r, i) => {
+        if(r.error) return `<div class="card" style="padding:12px;margin-top:10px;border-left:3px solid #D64545">
+          <div style="font-weight:600;color:#C0392B;font-size:12.5px">识别失败</div>
+          <div style="color:#8B93A8;word-break:break-all">${esc(r.url)}</div>
+          <div style="color:#8B93A8;margin-top:4px">${esc(r.error)}</div></div>`;
+        const p = r.report;
+        return `<div class="card" style="padding:12px;margin-top:10px">
+          <div style="font-weight:600;font-size:12.5px">${esc(p.host)} · ${esc(p.bookName || '未识别书名')}</div>
+          <div style="color:#8B93A8;margin-top:4px">目录 ${p.chapters} 章 · 正文约 ${p.contentChars} 字${p.searchHits ? ` · 搜索命中 ${p.searchHits} 条` : ' · 搜索未识别'}</div>
+          <div style="color:#8B93A8;margin-top:2px;word-break:break-all">搜索地址：${esc(r.source.searchUrl || '无')}</div>
+          ${p.problems.length ? `<div style="color:#B4791C;margin-top:4px">注意：${esc(p.problems.join('；'))}</div>` : ''}
+          <div style="margin-top:8px"><button class="btn primary" style="height:32px;font-size:12px" data-act="make-import" data-i="${i}">导入并测试</button></div>
+        </div>`;
+      }).join('');
+      if(btn){ btn.disabled = false; btn.textContent = '重新识别'; }
+    })();
+  },
+  'make-import'(el){
+    const rec = (LIVE.made || [])[Number(el.dataset.i)];
+    if(!rec || !rec.source) return toast('没有可导入的书源');
+    el.disabled = true; el.textContent = '导入中…';
+    api('/api/sources/import', {method:'POST', body:{json:[rec.source]}}).then(d => {
+      LIVE.srcList = null; loadSourceList();
+      toast(`已导入 ${d.added} 个，正在测试搜索…`);
+      return api('/api/sources').then(s => {
+        const hit = (s.list || []).find(x => x.url === rec.source.bookSourceUrl);
+        if(!hit) return toast('已导入，但列表里没找到，请刷新');
+        return api('/api/sources/test', {method:'POST', body:{id:hit.id}}).then(t => {
+          toast(t.ok ? `测试通过：搜到 ${t.count} 条` : `已导入，搜索没通过：${t.err || '无结果'}`);
+          LIVE.srcList = null; loadSourceList(); if(S.view === 'sources') render();
+        });
+      });
+    }).catch(e => { el.disabled = false; el.textContent = '导入并测试'; toast('导入失败：' + e.message); });
   },
   'read-ch'(el){
     const b = book(S.bookId); if(!b) return;

@@ -122,10 +122,30 @@
     return request(pathAndQuery, opts);
   }
 
+  /* 抓整页 HTML（造源用）：走后端 /api/page 代理，后端负责 charset 解码 */
+  async function fetchPage(url, referer, opt = {}) {
+    const method = (opt.method || 'GET').toUpperCase();
+    const q = '/api/page?u=' + encodeURIComponent(url) + '&r=' + encodeURIComponent(referer || '');
+    const init = { cache: 'no-store' };
+    if (method === 'POST') {
+      init.method = 'POST';
+      init.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+      init.body = opt.body || '';
+    }
+    const res = await fetch(q, init);
+    let data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+    if (!res.ok || !data || !data.text) {
+      throw new Error((data && data.error) || `HTTP ${res.status}`);
+    }
+    return { text: data.text, url: data.url || url, status: data.status || 200 };
+  }
+
   global.PLAT = {
     mode: 'vercel',
     call,
     ready: () => boot,
+    fetchPage,
     book: (src, url) => call(`/api/book?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}`),
     content: (src, url, bookUrl) => call(`/api/content?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}&book=${encodeURIComponent(bookUrl || '')}`).then(x => x.text)
   };
