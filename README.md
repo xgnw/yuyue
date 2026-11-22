@@ -81,6 +81,8 @@ vercel --prod
 | POST | `/api/sources/toggle` | `{id, enabled}`，仅进程内存生效，重启还原 |
 | POST | `/api/sources/test` | `{id, key}` 单源实测 |
 | POST | `/api/sources/import` | `{url}` 或 `{json}` 导入书源；过滤 JS 源、去重，返回 added/total/skippedJs/imported |
+| POST | `/api/sources/delete` | `{urls}` 或 `{url}` 删除书源，返回 total/removed/urls |
+| POST | `/api/sources/purge` | 一次删掉体检为 dead 的源，返回 total/removed/urls |
 | GET | `/api/search?key=&limit=` | 并发搜索（limit 上限 300，默认 60） |
 | GET | `/api/book?src=&url=` | 详情 + 目录 |
 | GET | `/api/content?src=&url=&book=` | 单章正文（`book` 用于前端缓存命中） |
@@ -106,6 +108,7 @@ node scripts/build-sources.mjs
 | --- | --- |
 | 书源启用状态 | 无数据库，toggle 只在当前函数实例内存里生效，冷启动后恢复默认 |
 | 导入的书源 | 同样只活在函数实例内存；浏览器把这份存 `localStorage`（键 `yuyue.sources.custom`），每次加载页面自动补发，冷启动后依然在 |
+| 删除的书源 | 浏览器把删除名单存 `localStorage`（键 `yuyue.sources.removed`），加载时补发给函数；只影响本机，重新导入可恢复 |
 | JS 书源 | Python 引擎不支持 `<js>`，构建期已剔除；导入时也会自动跳过（提示里显示跳过数量） |
 | 缓存 | 在浏览器 IndexedDB，换设备就没了；服务端不存正文 |
 | 搜索耗时 | 全量源（150 个左右）约 25~40 秒；线程池 24 并发 + 单源 5s 超时，函数上限 60s。只想要快就传小一点的 `limit` |

@@ -11,12 +11,21 @@
   'use strict';
 
   const CUSTOM_KEY = 'yuyue.sources.custom';
+  const REM_KEY = 'yuyue.sources.removed';
 
   function customList() {
     try { const a = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
   function saveCustom(list) {
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); } catch (e) { /* 超限就只保留本次会话 */ }
+  }
+
+  // 删掉的书源记在本地名单里，页面加载时补发给函数（函数重启后也能保持删除状态）
+  function removedList() {
+    try { const a = JSON.parse(localStorage.getItem(REM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function saveRemoved(list) {
+    try { localStorage.setItem(REM_KEY, JSON.stringify(list)); } catch (e) { }
   }
 
   async function request(pathAndQuery, opts = {}) {
@@ -40,8 +49,13 @@
   // 所以浏览器把同一份存 localStorage，每次加载页面自动补发给函数，冷启动后就又有了。
   const boot = (async () => {
     const list = customList();
-    if (!list.length) return;
-    try { await request('/api/sources/import', { method: 'POST', body: { json: list } }); } catch (e) { /* 补发失败不阻塞页面 */ }
+    if (list.length) {
+      try { await request('/api/sources/import', { method: 'POST', body: { json: list } }); } catch (e) { /* 补发失败不阻塞页面 */ }
+    }
+    const removed = removedList();
+    if (removed.length) {
+      try { await request('/api/sources/delete', { method: 'POST', body: { urls: removed } }); } catch (e) { }
+    }
   })();
 
   async function call(pathAndQuery, opts = {}) {
@@ -56,6 +70,16 @@
       if (d && d.imported && d.imported.length) {
         const old = customList().filter(s => !d.imported.some(x => x.bookSourceUrl === s.bookSourceUrl));
         saveCustom(old.concat(d.imported));
+      }
+      return d;
+    }
+
+    if (path === '/api/sources/delete' || path === '/api/sources/purge') {
+      const d = await request(pathAndQuery, opts);
+      if (d && d.urls && d.urls.length) {
+        const old = removedList();
+        const merged = Array.from(new Set(old.concat(d.urls)));
+        saveRemoved(merged);
       }
       return d;
     }

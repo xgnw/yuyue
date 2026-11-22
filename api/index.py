@@ -199,6 +199,7 @@ def api_sources():
     for s in arr:
         a = s.get('_audit') or {}
         out.append({'id': s['_id'], 'name': disp(s.get('bookSourceName')), 'group': s.get('bookSourceGroup'),
+                    'url': s.get('bookSourceUrl'),
                     'host': S.norm_base(s), 'enabled': bool(s.get('enabled')),
                     'status': s.get('_status', 'untested'), 'ms': a.get('ms'), 'count': a.get('search'),
                     'toc': a.get('toc'), 'chars': a.get('content'), 'sample': a.get('sample')})
@@ -302,6 +303,35 @@ def api_import():
             'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent')
     imported = [{k: x[k] for k in SLIM if k in x} for x in keep]
     return jsonify({'added': len(keep), 'total': len(_STATE['sources']), 'skippedJs': js, 'imported': imported})
+
+
+@app.route('/api/sources/delete', methods=['POST'])
+def api_delete():
+    """删除书源：按 URL 从当前实例的列表里剔除。浏览器会记一份「已删」名单，冷启动后自动补发。"""
+    b = request.get_json(force=True, silent=True) or {}
+    urls = b.get('urls') or ([b.get('url')] if b.get('url') else [])
+    urls = [u for u in urls if u]
+    if not urls:
+        return jsonify({'error': '缺少要删除的书源地址'}), 400
+    cur = sources()
+    keep = [s for s in cur if s.get('bookSourceUrl') not in set(urls)]
+    removed = len(cur) - len(keep)
+    _STATE['sources'] = keep
+    return jsonify({'ok': True, 'total': len(keep), 'removed': removed, 'urls': urls})
+
+
+@app.route('/api/sources/purge', methods=['POST'])
+def api_purge():
+    """一键清理体检为 dead 的书源"""
+    cur = sources()
+    dead = [s for s in cur if s.get('_status') == 'dead' and s.get('bookSourceUrl')]
+    if not dead:
+        return jsonify({'ok': True, 'total': len(cur), 'removed': 0, 'urls': []})
+    urls = [s['bookSourceUrl'] for s in dead]
+    urlset = set(urls)
+    keep = [s for s in cur if s.get('bookSourceUrl') not in urlset]
+    _STATE['sources'] = keep
+    return jsonify({'ok': True, 'total': len(keep), 'removed': len(dead), 'urls': urls})
 
 
 @app.route('/api/search')
