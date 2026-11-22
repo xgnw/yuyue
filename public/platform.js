@@ -29,6 +29,7 @@
     // 只留必要的几个字段，避免 localStorage 超限
     const slim = list.map(s => ({
       bookSourceName: s.bookSourceName, bookSourceUrl: s.bookSourceUrl, bookSourceGroup: s.bookSourceGroup,
+      bookSourceType: s.bookSourceType, header: s.header,
       enabled: s.enabled !== false, searchUrl: s.searchUrl,
       ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent
     }));
@@ -206,6 +207,19 @@
       arr.forEach(x => { delete rm[x.bookSourceUrl]; });
       saveRemoved(rm);
       return { added: arr.length, total: ShuyeEngine.sources.length, skippedJs: jsCount };
+    }
+
+    if (path === '/api/sources/export') {
+      // 导出「当前生效」的整份列表（内置 + 导入 - 删除），拿去合并进仓库 sources.json
+      await ensure();
+      const KEEP = ['bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'bookSourceType',
+        'enabled', 'header', 'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent'];
+      const list = ShuyeEngine.sources.map(s => {
+        const o = {};
+        KEEP.forEach(k => { if (s[k] !== undefined && s[k] !== '' && s[k] !== null) o[k] = s[k]; });
+        return o;
+      });
+      return { ok: true, count: list.length, list };
     }
 
     if (path === '/api/search') { await ensure(); return handleSearch(q); }

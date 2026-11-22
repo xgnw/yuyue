@@ -40,10 +40,12 @@ worker/
   index.js        /p 抓取代理、/api/img 封面代理、其余交给静态资源
 scripts/
   build-sources.mjs  重新生成 public/sources.json
+  merge-export.mjs   把「导出」得到的 JSON 合并进 sources.json（让书源全局生效）
 tools/
   dev-server.js   本地模拟 Worker，不需要装 wrangler 也能跑（默认 5199）
 data/
   audit.json      书源体检结果（哪些源能搜/能读目录/能取正文），构建时用来排序打标
+  extra-sources.json  自己导入/添加的源（merge-export 维护，构建时自动并入）
 ```
 
 ## 三、本地跑
@@ -96,6 +98,23 @@ node scripts/build-sources.mjs
 
 体检结果 `data/audit.json` 可以自己造：格式是 `{recs:[{name,host,search,toc,content,ms,err,sample}]}`，
 `search/toc` 是条数、`content` 是正文字数。没有这个文件也能跑，只是所有源都标成 `untested`、排序靠后。
+
+### 自己导入的书源怎么让所有设备都能用
+
+导入的书源默认只活在这台设备的浏览器里。要全局生效，把它并进仓库清单：
+
+1. 任意设备打开 **书源管理 → 导出**，得到 `愉阅书源-日期.json`（内容 = 内置 + 导入 - 删除）；
+2. 在 `deploy/cloudflare` 目录执行：
+
+```bash
+node scripts/merge-export.mjs 愉阅书源-2026-11-21.json          # 只追加新源（默认，安全）
+node scripts/merge-export.mjs 愉阅书源-2026-11-21.json --sync   # 仓库清单 = 导出清单，连删除一起同步
+```
+
+3. `git add -A && git commit -m "更新书源清单" && git push`，Workers 重新构建后所有设备共用这份清单。
+
+脚本做的事：过滤 JS 源（云端跑不了）→ 按 `bookSourceUrl` 去重 → 写回 `public/sources.json`
+（已有的源保留原体检状态）→ 新源同时记进 `data/extra-sources.json`，以后重跑 `build-sources.mjs` 也不会丢。
 
 ### 删掉没用的书源
 

@@ -19,6 +19,8 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const OUT = path.join(ROOT, 'public', 'sources.json');
 const AUDIT = path.join(ROOT, 'data', 'audit.json');
 const LOCAL = path.join(ROOT, 'data', 'sources-full.json');
+/* 用户自己加/导入的源，由 scripts/merge-export.mjs 维护；全量重抓时也一起带上 */
+const EXTRA_FILE = path.join(ROOT, 'data', 'extra-sources.json');
 
 /* 线上导出有时缺 searchUrl 字段，优先用本仓 data/sources-full.json（可作为私有数据放本地） */
 async function loadRaw() {
@@ -74,9 +76,15 @@ const main = async () => {
   const list = await loadRaw();
   console.log('raw sources:', list.length);
 
+  const extra = fs.existsSync(EXTRA_FILE) ? JSON.parse(fs.readFileSync(EXTRA_FILE, 'utf8')) : [];
+  const seen = new Set(list.map(s => s.bookSourceUrl));
+  const extraNew = extra.filter(s => s && s.bookSourceUrl && !seen.has(s.bookSourceUrl));
+  if (extraNew.length) console.log('merge extra:', extraNew.length);
+  const rawList = list.concat(extraNew);
+
   const audit = loadAudit();
   const kept = [];
-  for (const raw of list) {
+  for (const raw of rawList) {
     if (needsJs(raw)) continue;
     const s = slim(raw);
     const a = audit[hostOf(s)] || {};
