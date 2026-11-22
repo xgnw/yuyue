@@ -112,7 +112,7 @@ def do_search(key, limit=14, page=1):
         st = {'source': disp(s.get('bookSourceName')), 'id': s['_id'], 'count': 0, 'err': '', 'ms': 0}
         ts = time.time()
         try:
-            rs = S.search(s, key, page, timeout=10)
+            rs = S.search(s, key, page, timeout=5)
             st['count'] = len(rs)
             for r in rs[:6]:
                 r['sourceId'] = s['_id']
@@ -124,7 +124,7 @@ def do_search(key, limit=14, page=1):
         finally:
             st['ms'] = int((time.time() - ts) * 1000)
 
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=24) as ex:
         for rs, st in ex.map(one, usable(limit)):
             results.extend(rs)
             stats.append(st)
@@ -230,13 +230,88 @@ def api_test():
         return jsonify({'ok': False, 'err': str(e)[:80]})
 
 
+JS_RULE_RE = re.compile(r'(@js:|<js>|java\.)')
+
+
+def _is_js_source(s):
+    """规则里带脚本的书源，Python 引擎跑不了（与 Cloudflare 版口径一致）"""
+    for k in ('searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent'):
+        v = s.get(k)
+        if isinstance(v, str) and JS_RULE_RE.search(v):
+            return True
+        if isinstance(v, dict):
+            for x in v.values():
+                if isinstance(x, str) and JS_RULE_RE.search(x):
+                    return True
+    return False
+
+
+@app.route('/api/sources/import', methods=['POST'])
+def api_import():
+    """导入书源：支持粘贴 JSON，也支持给一个 URL 由函数去拉（Vercel 端没有跨域问题）。
+    导入结果放在当前函数实例内存里；浏览器会把同一份存 localStorage，冷启动后自动补发。"""
+    b = request.get_json(force=True, silent=True) or {}
+    arr = []
+    if b.get('json'):
+        j = b['json']
+        arr = j if isinstance(j, list) else [j]
+    elif b.get('url'):
+        try:
+            r = requests.get(b['url'], headers={'User-Agent': UA, 'Accept': 'application/json,*/*'}, timeout=20)
+        except Exception as e:
+            return jsonify({'error': '拉取书源地址失败：' + str(e)[:60]}), 502
+        if r.status_code >= 400:
+            return jsonify({'error': '拉取书源失败：HTTP %d' % r.status_code}), 502
+        try:
+            data = r.json()
+        except Exception:
+            return jsonify({'error': '该地址返回的是网页不是 JSON，请填书源 JSON 导出地址（如 …/shuyuan/json）'}), 400
+        arr = data if isinstance(data, list) else [data]
+        if len(arr) <= 1 and not (arr[0].get('bookSourceUrl') or arr[0].get('bookSourceName')):
+            inner = data.get('sources') or data.get('data') or data.get('list')
+            if isinstance(inner, list):
+                arr = inner
+    else:
+        return jsonify({'error': '缺少 url 或 json'}), 400
+
+    arr = [x for x in arr if isinstance(x, dict) and (x.get('bookSourceUrl') or x.get('bookSourceName'))]
+    if not arr:
+        return jsonify({'error': '没有解析到书源，请检查地址或粘贴 JSON'}), 400
+    js = sum(1 for x in arr if _is_js_source(x))
+    arr = [x for x in arr if not _is_js_source(x)]
+    seen, keep = set(), []
+    for x in arr:
+        u = x.get('bookSourceUrl') or ''
+        if u and u in seen:
+            continue
+        seen.add(u)
+        keep.append(x)
+    if not keep:
+        return jsonify({'error': '全部 %d 个源都用了 JS 规则，云端版跑不了' % js}), 400
+
+    cur = sources()
+    urls = {x.get('bookSourceUrl') for x in keep}
+    cur = [s for s in cur if s.get('bookSourceUrl') not in urls]
+    for x in keep:
+        x.setdefault('_status', 'untested')
+        x.setdefault('enabled', True)
+        x.setdefault('_audit', {})
+        x['_id'] = src_id(x)
+    _STATE['sources'] = cur + keep
+    SLIM = ('bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'enabled',
+            'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent')
+    imported = [{k: x[k] for k in SLIM if k in x} for x in keep]
+    return jsonify({'added': len(keep), 'total': len(_STATE['sources']), 'skippedJs': js, 'imported': imported})
+
+
 @app.route('/api/search')
 def api_search():
     key = (request.args.get('key') or '').strip()
     if not key:
         return jsonify({'error': 'missing key'}), 400
-    limit = int(request.args.get('limit') or 14)
-    return jsonify(do_search(key, min(limit, 20)))
+    limit = int(request.args.get('limit') or 60)
+    # 上限放到 300：正常 244 个源全参与；线程池 16 + 单源 7s 超时，函数 60s 内能跑完
+    return jsonify(do_search(key, min(limit, 300)))
 
 
 @app.route('/api/book')
@@ -292,3 +367,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=int(os.environ.get('PORT', 5200)), debug=False)
+

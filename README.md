@@ -80,7 +80,8 @@ vercel --prod
 | GET | `/api/sources` | 书源列表（含 status/ms/count/toc/chars） |
 | POST | `/api/sources/toggle` | `{id, enabled}`，仅进程内存生效，重启还原 |
 | POST | `/api/sources/test` | `{id, key}` 单源实测 |
-| GET | `/api/search?key=&limit=` | 并发搜索 |
+| POST | `/api/sources/import` | `{url}` 或 `{json}` 导入书源；过滤 JS 源、去重，返回 added/total/skippedJs/imported |
+| GET | `/api/search?key=&limit=` | 并发搜索（limit 上限 300，默认 60） |
 | GET | `/api/book?src=&url=` | 详情 + 目录 |
 | GET | `/api/content?src=&url=&book=` | 单章正文（`book` 用于前端缓存命中） |
 | GET | `/api/img?u=` | 封面代理 |
@@ -104,9 +105,10 @@ node scripts/build-sources.mjs
 | 项目 | 说明 |
 | --- | --- |
 | 书源启用状态 | 无数据库，toggle 只在当前函数实例内存里生效，冷启动后恢复默认 |
-| JS 书源 | Python 引擎不支持 `<js>`，构建期已剔除 |
+| 导入的书源 | 同样只活在函数实例内存；浏览器把这份存 `localStorage`（键 `yuyue.sources.custom`），每次加载页面自动补发，冷启动后依然在 |
+| JS 书源 | Python 引擎不支持 `<js>`，构建期已剔除；导入时也会自动跳过（提示里显示跳过数量） |
 | 缓存 | 在浏览器 IndexedDB，换设备就没了；服务端不存正文 |
-| 搜索耗时 | 受源站响应影响，一般 2~4 秒；函数执行上限 60s，超时请减少并发源 |
+| 搜索耗时 | 全量源（150 个左右）约 25~40 秒；线程池 24 并发 + 单源 5s 超时，函数上限 60s。只想要快就传小一点的 `limit` |
 | 版权 | 书源来自公开合集，正文版权归原站与作者，仅供个人阅读测试 |
 
 ## 八、和 Cloudflare 版的差别
@@ -116,6 +118,6 @@ node scripts/build-sources.mjs
 | 规则引擎 | 浏览器 `engine.js` | 服务端 Python `srlib.py` |
 | 抓取 | Worker `/p` 代理 | 函数内 requests 直抓 |
 | 书源规则兼容 | XPath/CSS/JSONPath 子集，无 JS | Python 引擎，无 JS |
-| 搜索并发 | 浏览器 `Promise.all` | 线程池 8 并发 |
+| 搜索并发 | 浏览器 `Promise.all`（边搜边出） | 线程池 24 并发，一次性返回 |
 | 缓存 | IndexedDB | IndexedDB |
 | 运维 | 一个 Worker + 静态资源 | 一个 Python 函数 + 静态文件 |

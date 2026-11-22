@@ -10,6 +10,15 @@
 (function (global) {
   'use strict';
 
+  const CUSTOM_KEY = 'yuyue.sources.custom';
+
+  function customList() {
+    try { const a = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+  }
+  function saveCustom(list) {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); } catch (e) { /* 超限就只保留本次会话 */ }
+  }
+
   async function request(pathAndQuery, opts = {}) {
     const init = { cache: 'no-store', headers: {} };
     if (opts.method && opts.method !== 'GET') {
@@ -27,9 +36,29 @@
     return data;
   }
 
+  // Vercel 函数没有常驻磁盘，导入的书源只活在当前实例内存里。
+  // 所以浏览器把同一份存 localStorage，每次加载页面自动补发给函数，冷启动后就又有了。
+  const boot = (async () => {
+    const list = customList();
+    if (!list.length) return;
+    try { await request('/api/sources/import', { method: 'POST', body: { json: list } }); } catch (e) { /* 补发失败不阻塞页面 */ }
+  })();
+
   async function call(pathAndQuery, opts = {}) {
     const [path, qs] = pathAndQuery.split('?');
     if (path.startsWith('/api/cache/')) return IdbCache.handle(pathAndQuery, opts);
+
+    // 除导入本身外，都等「补发导入书源」完成，避免列表/搜索漏掉用户自己的源
+    if (path !== '/api/sources/import') { try { await boot; } catch (e) { } }
+
+    if (path === '/api/sources/import') {
+      const d = await request(pathAndQuery, opts);
+      if (d && d.imported && d.imported.length) {
+        const old = customList().filter(s => !d.imported.some(x => x.bookSourceUrl === s.bookSourceUrl));
+        saveCustom(old.concat(d.imported));
+      }
+      return d;
+    }
 
     // 正文先查 IndexedDB（整本下载过的书离线也能读），命中就零网络
     if (path === '/api/content') {
@@ -45,7 +74,7 @@
   global.PLAT = {
     mode: 'vercel',
     call,
-    ready: () => Promise.resolve(),
+    ready: () => boot,
     book: (src, url) => call(`/api/book?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}`),
     content: (src, url, bookUrl) => call(`/api/content?src=${encodeURIComponent(src)}&url=${encodeURIComponent(url)}&book=${encodeURIComponent(bookUrl || '')}`).then(x => x.text)
   };
