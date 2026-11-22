@@ -1,0 +1,2176 @@
+{
+ "key": "剑来",
+ "at": "2026-11-21 22:03",
+ "recs": [
+  {
+   "name": "📂连尚读书",
+   "host": "http://www.lsds.cn",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 757,
+   "err": "",
+   "sample": "我在村里养龙的秘密被表妹直播曝光了"
+  },
+  {
+   "name": "快眼小说",
+   "host": "http://www.kyxsw.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1513,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "久久小说",
+   "host": "http://m.9191net.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 307,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "黑岩阅读网#2",
+   "host": "http://m.xheiyan.org",
+   "search": 20,
+   "toc": 25,
+   "content": 975,
+   "ms": 1144,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂️圣墟小说",
+   "host": "http://www.shengxuxu.info",
+   "search": 20,
+   "toc": 1326,
+   "content": 1651,
+   "ms": 2321,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂去读书",
+   "host": "http://www.quduwx.net",
+   "search": 20,
+   "toc": 1304,
+   "content": 3842,
+   "ms": 3602,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "R 圣墟小说网🐶",
+   "host": "http://www.shengxuxu.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1822,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "多多书院（优）",
+   "host": "https://www.txtduo.net/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 12528,
+   "err": "OSError: HTTP 500 https://www.txtduo.net/search.html?searchkey=%E5%89%91%E6%9D%A5",
+   "sample": ""
+  },
+  {
+   "name": "📂橘子小说",
+   "host": "http://www.shugelou.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 950,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://www.biqusa.com",
+   "search": 19,
+   "toc": 0,
+   "content": 0,
+   "ms": 1656,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "🎃笔趣阁🎃#71",
+   "host": "https://wap.ibiquge.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1195,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "橘子小说",
+   "host": "http://www.xinshuge.net",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 2957,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁🎃#66",
+   "host": "https://www.biqugu.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 9737,
+   "err": "OSError: HTTP 403 https://www.biqugu.cc/search.php?keyword=%E5%89%91%E6%9D%A5",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂️唐三中文",
+   "host": "http://www.xtangsanshu.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1783,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂33文学",
+   "host": "http://z.303wx.com/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 532,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "爪机书屋",
+   "host": "https://zjsw.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 591,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "醋溜儿文学[666]",
+   "host": "https://www.clwx666.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 3539,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂未来天王",
+   "host": "http://www.weilaitianwang.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 333,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂顶点小说",
+   "host": "http://www.23uswx.la",
+   "search": 20,
+   "toc": 1309,
+   "content": 3785,
+   "ms": 3553,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂天域小说",
+   "host": "http://www.tycqzw.info",
+   "search": 20,
+   "toc": 1312,
+   "content": 2874,
+   "ms": 1245,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂克苏鲁公社",
+   "host": "https://www.cthulhuclub.com",
+   "search": 4,
+   "toc": 0,
+   "content": 0,
+   "ms": 1039,
+   "err": "",
+   "sample": "食尸鬼梅丽菲利亚"
+  },
+  {
+   "name": "📂神马小说",
+   "host": "https://sma.yueyouxs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 107,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "小原小说",
+   "host": "https://m.min-yuan.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 6198,
+   "err": "OSError: HTTP 404 https://m.min-yuan.com/sou?wd=%E5%89%91%E6%9D%A5",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂唐人小说网",
+   "host": "https://www.trxsw.com",
+   "search": 20,
+   "toc": 706,
+   "content": 2159,
+   "ms": 1019,
+   "err": "",
+   "sample": "剑来：宁姚做大，秀做小"
+  },
+  {
+   "name": "♜鬼吹灯①",
+   "host": "http://www.gdbzkz.com",
+   "search": 20,
+   "toc": 1311,
+   "content": 3813,
+   "ms": 1710,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂疯读小说",
+   "host": "https://fiction.fengduxiaoshuo.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 512,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂9559小说",
+   "host": "https://www.95590.org",
+   "search": 10,
+   "toc": 0,
+   "content": 0,
+   "ms": 2150,
+   "err": "InvalidURL: URL can't contain control characters. \"/books/侯卫东官场笔记（全集）_官场小说_侯卫东官场笔记（全集）免费在线阅读",
+   "sample": "侯卫东官场笔记（全集）"
+  },
+  {
+   "name": "📂啃书小说",
+   "host": "http://www.kenshuzw.la",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1369,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁",
+   "host": "http://m.ibiquzw.info",
+   "search": 20,
+   "toc": 1311,
+   "content": 1083,
+   "ms": 1845,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂香书小说",
+   "host": "http://www.ibiqugu.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 340,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔尖中文",
+   "host": "http://www.xbiquwk.com",
+   "search": 19,
+   "toc": 1311,
+   "content": 3723,
+   "ms": 1494,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂无极小说",
+   "host": "http://wujiwx.info",
+   "search": 20,
+   "toc": 1323,
+   "content": 1775,
+   "ms": 1341,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂乐文阁网",
+   "host": "http://www.lewendu8.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1637,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂全本小说",
+   "host": "http://www.xs5300.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 221,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂若雨中文",
+   "host": "http://www.3yt.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 2585,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "❤️搜78🎃",
+   "host": "https://wap.sou78.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1603,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂悠久小说",
+   "host": "http://www.ujxsw.org",
+   "search": 20,
+   "toc": 1312,
+   "content": 3867,
+   "ms": 2132,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂落霞小说",
+   "host": "https://www.luoxia123.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 960,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂爱笔趣阁",
+   "host": "https://www.ibiquges.com",
+   "search": 20,
+   "toc": 1312,
+   "content": 2969,
+   "ms": 2618,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂飞速小说网",
+   "host": "http://www.feisuwx.org",
+   "search": 20,
+   "toc": 12,
+   "content": 2110,
+   "ms": 1578,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "九五书包#1",
+   "host": "http://www.95shubao.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 790,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://m.biquge.one",
+   "search": 3,
+   "toc": 123,
+   "content": 2995,
+   "ms": 4461,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "文桑小说",
+   "host": "http://www.wensang.net",
+   "search": 20,
+   "toc": 1323,
+   "content": 1684,
+   "ms": 2124,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "4020电子书",
+   "host": "https://www.iwurexs.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1044,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂小说网吧",
+   "host": "http://www.shukuge.info/",
+   "search": 20,
+   "toc": 1311,
+   "content": 28182,
+   "ms": 2085,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂久久小说网",
+   "host": "https://www.aijjxs.com",
+   "search": 1,
+   "toc": 2076,
+   "content": 2842,
+   "ms": 3158,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂阁笔趣网",
+   "host": "http://www.gashuw.net",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 791,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "未来天王",
+   "host": "http://www.weilaitianwang.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1646,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "📂八一中文",
+   "host": "http://www.wangshuwx.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 426,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂鸟书网",
+   "host": "http://wap.99wx.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1174,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "企鹅听书",
+   "host": "http://pub.ddrd8.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 256,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "听书阁",
+   "host": "http://m.qunshu.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1643,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂九五书包",
+   "host": "http://www.95dushu.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 339,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂漫香阁",
+   "host": "https://xn--ksp-mxgmxgcom-yp8ve33bkpevz1kpxq.mxgmh.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 73695,
+   "err": "URLError: <urlopen error timed out>",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂搜读中文",
+   "host": "http://m.soduzw.org",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 685,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂7766小说网",
+   "host": "http://m.qiliuzw.info",
+   "search": 20,
+   "toc": 1318,
+   "content": 1347,
+   "ms": 1717,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "七七书库",
+   "host": "http://www.77shuku.info",
+   "search": 20,
+   "toc": 1362,
+   "content": 2981,
+   "ms": 1444,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "小原文学",
+   "host": "https://www.min-yuan.com",
+   "search": 17,
+   "toc": 1276,
+   "content": 2354,
+   "ms": 2442,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂小说77",
+   "host": "https://www.xs177.com",
+   "search": 20,
+   "toc": 1278,
+   "content": 1991,
+   "ms": 9498,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂搬山人小说网",
+   "host": "https://www.banshanren.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 821,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂奇书网",
+   "host": "https://www.qishuxia.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 3751,
+   "err": "OSError: HTTP 403 https://www.qishuxia.com/modules/article/search.php",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://www.bqquge.org",
+   "search": 2,
+   "toc": 1278,
+   "content": 861,
+   "ms": 7662,
+   "err": "",
+   "sample": "剑来完整版"
+  },
+  {
+   "name": "📂影书小说",
+   "host": "https://wap.yingsx.com",
+   "search": 20,
+   "toc": 40,
+   "content": 680,
+   "ms": 3039,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "过期杂志",
+   "host": "https://www.52dzxy.com",
+   "search": 20,
+   "toc": 56,
+   "content": 2117,
+   "ms": 10602,
+   "err": "",
+   "sample": "2026年第18期"
+  },
+  {
+   "name": "⚡📂️快眼小说",
+   "host": "http://www.kyxsw.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 374,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "梦书中文",
+   "host": "http://m.mcxs.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 397,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂爱乐文学",
+   "host": "https://www.ailewx.com",
+   "search": 20,
+   "toc": 813,
+   "content": 1910,
+   "ms": 2736,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂书荒网",
+   "host": "https://shuhuangw.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2417,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎫灵猫小说",
+   "host": "https://quickapi.biduwenxue.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 0,
+   "err": "AttributeError: module 'json' has no attribute 'JSONException'",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂错层小说",
+   "host": "https://www.cuoceng.org",
+   "search": 7,
+   "toc": 500,
+   "content": 3732,
+   "ms": 6525,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂蚂蚁阅读#",
+   "host": "http://wap.mayitxt.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 3585,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂被电子书",
+   "host": "https://www.iwurexs.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1650,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂猪猪小说",
+   "host": "http://www.zzs5.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 396,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂爱久久小说",
+   "host": "https://m.ijjxsxzw.com",
+   "search": 1,
+   "toc": 0,
+   "content": 0,
+   "ms": 5434,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "衍墨轩",
+   "host": "https://www.ymxshuwu.com",
+   "search": 20,
+   "toc": 813,
+   "content": 1910,
+   "ms": 18729,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂爱笔楼",
+   "host": "http://m.biqutu.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 841,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "鬼吹灯",
+   "host": "http://www.gdbzkz.la",
+   "search": 20,
+   "toc": 1311,
+   "content": 3813,
+   "ms": 4295,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂优美小说网",
+   "host": "https://m.jcxsyd.com",
+   "search": 6,
+   "toc": 10,
+   "content": 8,
+   "ms": 11738,
+   "err": "",
+   "sample": "穿进剑来世界后,我一张嘴骗好多钱"
+  },
+  {
+   "name": "📂三八小说",
+   "host": "https://www.38xs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4302,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂小说阅读",
+   "host": "http://www.xyetianlian.com",
+   "search": 20,
+   "toc": 1323,
+   "content": 1794,
+   "ms": 1432,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂云中书库",
+   "host": "http://www.yunxs.com",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 2177,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂爱读书吧",
+   "host": "https://www.aidushu8.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 181,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂破万卷吧",
+   "host": "http://www.powanjuan.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4947,
+   "err": "OSError: HTTP 403 http://www.powanjuan.cc/e/search/index.php",
+   "sample": ""
+  },
+  {
+   "name": "玄幻阁 ",
+   "host": "http://www.xuanhuange.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1401,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂4电子书",
+   "host": "http://www.4020xs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 535,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂️斗破苍穹cc",
+   "host": "http://m.xdoupocangqiong.org",
+   "search": 20,
+   "toc": 30,
+   "content": 571,
+   "ms": 2763,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "书仙窝",
+   "host": "http://m.shuxianwo.com",
+   "search": 1,
+   "toc": 20,
+   "content": 1480,
+   "ms": 2764,
+   "err": "",
+   "sample": "鍓戞潵"
+  },
+  {
+   "name": "📂天地中文",
+   "host": "http://www.tiandizw.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 199,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂顶点小说",
+   "host": "https://www.ddyueshu.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 883,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂飘天文学手机版",
+   "host": "https://m.ptwxz.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1488,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂新吾爱文学网",
+   "host": "https://m.555b.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4177,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂鲤鱼乡",
+   "host": "https://www.liyuxiangall.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 3212,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂梦书中文",
+   "host": "http://www.mcxs.la",
+   "search": 19,
+   "toc": 1323,
+   "content": 1775,
+   "ms": 1755,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂免费小说",
+   "host": "https://api.wnreader.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1059,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎉 阅友小说",
+   "host": "http://m.yueyouxs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 131,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "书趣阁",
+   "host": "http://wap.xshuquge.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 601,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂必去网站",
+   "host": "http://www.ibiquw.org",
+   "search": 20,
+   "toc": 1107,
+   "content": 2864,
+   "ms": 2203,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂笔趣阁",
+   "host": "https://www.whzh-xs.cc",
+   "search": 20,
+   "toc": 715,
+   "content": 0,
+   "ms": 7838,
+   "err": "OSError: HTTP 404 https://www.whzh-xs.cc/du/64519957/701.html,{\"webView\":true}",
+   "sample": "高武：我的武道天赋逐年递增"
+  },
+  {
+   "name": "⚡📂无双小说",
+   "host": "http://www.buxia.la",
+   "search": 20,
+   "toc": 1303,
+   "content": 1002,
+   "ms": 2699,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂必去书库",
+   "host": "http://m.biqusk.info",
+   "search": 20,
+   "toc": 20,
+   "content": 5399,
+   "ms": 2440,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "❤️亿软小说🎃",
+   "host": "http://www.yiruan.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2117,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂飘天文学",
+   "host": "https://m.piaotianwxz.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1343,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁bqquge",
+   "host": "https://www.bqquge.com",
+   "search": 2,
+   "toc": 1278,
+   "content": 861,
+   "ms": 5029,
+   "err": "",
+   "sample": "剑来完整版"
+  },
+  {
+   "name": "溜达小说",
+   "host": "http://www.txtshuku.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1641,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "📂新笔趣阁wap",
+   "host": "https://wap.t965.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1656,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂书斋阁",
+   "host": "https://www.shuzhaige.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1633,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁³",
+   "host": "https://www.ibiquge.la",
+   "search": 20,
+   "toc": 1312,
+   "content": 2969,
+   "ms": 2364,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁免",
+   "host": "https://www.bbqqgg.com",
+   "search": 10,
+   "toc": 10,
+   "content": 2341,
+   "ms": 5053,
+   "err": "",
+   "sample": "剑来淫行"
+  },
+  {
+   "name": "小说网",
+   "host": "http://www.shukuge.com",
+   "search": 20,
+   "toc": 1311,
+   "content": 28182,
+   "ms": 2323,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "http://www.biqugere.net",
+   "search": 20,
+   "toc": 1366,
+   "content": 4826,
+   "ms": 1969,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "❤️安轻小说",
+   "host": "https://minipapi.sfacg.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 239,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂黄易小说",
+   "host": "http://wap.aihytd.com",
+   "search": 20,
+   "toc": 1308,
+   "content": 1396,
+   "ms": 5923,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://www.x520xs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 8208,
+   "err": "OSError: HTTP 404 https://www.x520xs.com/{{cookie.removeCookie(source.getKey())}}https:/w",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂八零小说",
+   "host": "http://wap.80ge.info/",
+   "search": 20,
+   "toc": 40,
+   "content": 1281,
+   "ms": 1616,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂飘天文学手机版",
+   "host": "https://m.piaotianbiquge.com/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2730,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂殓师灵异",
+   "host": "http://www.rulianshi.cc",
+   "search": 20,
+   "toc": 1323,
+   "content": 1786,
+   "ms": 1479,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "鬼吹小说",
+   "host": "http://www.gdbzkz.org",
+   "search": 20,
+   "toc": 1311,
+   "content": 3813,
+   "ms": 1653,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂星星小说网",
+   "host": "https://m.xiifan.com",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 617,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "❤️xx笔趣阁🎃",
+   "host": "https://www.xxbiqu.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1071,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔书网手机版",
+   "host": "http://m.biqukun.org/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1423,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎉 香书小说",
+   "host": "http://www.xbiqugu.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1099,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂就爱读小说网",
+   "host": "https://m.95kxs.net",
+   "search": 12,
+   "toc": 0,
+   "content": 0,
+   "ms": 2678,
+   "err": "UnicodeEncodeError: 'ascii' codec can't encode characters in position 14-19: ordinal not in range(12",
+   "sample": "剑来同人故事"
+  },
+  {
+   "name": "📂无奈书库",
+   "host": "https://www.52shuku123.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2253,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂三五小说",
+   "host": "http://www.35ge.info",
+   "search": 20,
+   "toc": 1329,
+   "content": 1684,
+   "ms": 1330,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂无极书院",
+   "host": "http://m.wjzxchina.com",
+   "search": 20,
+   "toc": 40,
+   "content": 1055,
+   "ms": 23506,
+   "err": "",
+   "sample": "剑来1碎碑镇印"
+  },
+  {
+   "name": "⚡📂免费小说",
+   "host": "https://www.quanwenyuedu.io",
+   "search": 20,
+   "toc": 426,
+   "content": 2685,
+   "ms": 4988,
+   "err": "",
+   "sample": "无极始神"
+  },
+  {
+   "name": "📂平板电子网",
+   "host": "http://wap.qiqixs.la/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 457,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎃零点看书🎃",
+   "host": "http://23.225.143.232",
+   "search": 20,
+   "toc": 20,
+   "content": 1979,
+   "ms": 1177,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "蚂蚁阅读",
+   "host": "http://wap.imayitxt.com",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 5656,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂泡书吧",
+   "host": "http://www.paoshu9.net",
+   "search": 20,
+   "toc": 1320,
+   "content": 1726,
+   "ms": 3608,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂全本小说",
+   "host": "http://www.sh5300.com",
+   "search": 20,
+   "toc": 1313,
+   "content": 2835,
+   "ms": 1309,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂手机小说",
+   "host": "https://www.shoujix.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1827,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "❤️斗破苍穹cc🎃",
+   "host": "http://m.doupocangqiong.cc",
+   "search": 20,
+   "toc": 30,
+   "content": 571,
+   "ms": 1915,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁",
+   "host": "http://www.biqukun.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 981,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂盗墓笔记",
+   "host": "http://www.daomubiji.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 5012,
+   "err": "OSError: HTTP 404 http://www.daomubiji.com/-",
+   "sample": ""
+  },
+  {
+   "name": "五五读书（优）",
+   "host": "https://www.changduzw.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1631,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂顶点小说",
+   "host": "https://www.dyueshu.cc/",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 814,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "猪猪小说下载网-免费TXT小说_zzs5.info",
+   "host": "http://www.zzs5.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1632,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "📂三三言情",
+   "host": "https://m.x33yq.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1866,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁⁷⁸",
+   "host": "https://www.biquge78.cc",
+   "search": 1,
+   "toc": 1277,
+   "content": 2367,
+   "ms": 8379,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂得奇小说网",
+   "host": "https://www.deqitxt.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1987,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎃SHF笔趣阁🎃",
+   "host": "http://m.shfljx.com",
+   "search": 6,
+   "toc": 0,
+   "content": 0,
+   "ms": 3787,
+   "err": "",
+   "sample": "剑来同人"
+  },
+  {
+   "name": "笔趣网吧",
+   "host": "http://www.biquw.info",
+   "search": 20,
+   "toc": 1107,
+   "content": 2864,
+   "ms": 1640,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "超星网站（优+）",
+   "host": "http://yz4.chaoxing.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 233,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://www.8tsw.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 524,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "187小说(无搜索）",
+   "host": "https://www.187xs.com",
+   "search": 20,
+   "toc": 1278,
+   "content": 1985,
+   "ms": 4020,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁de",
+   "host": "https://m.bqgde.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2868,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁新站",
+   "host": "https://www.hqrgjtcw.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1652,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂茂鑫小说",
+   "host": "http://www.ucmaoxin.com",
+   "search": 20,
+   "toc": 20,
+   "content": 3741,
+   "ms": 1827,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📂笔趣阁",
+   "host": "https://www.byqg.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 810,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂逐浪小说",
+   "host": "https://www.zhulang.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 296,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁③",
+   "host": "https://www.biquge99.cc",
+   "search": 2,
+   "toc": 1313,
+   "content": 3778,
+   "ms": 2229,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://www.tianxiabachang.cn",
+   "search": 20,
+   "toc": 1319,
+   "content": 1684,
+   "ms": 3050,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "❤️蚂蚁阅读🎃",
+   "host": "http://wap.mayitxt.org",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 4441,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://m.bqg6.xyz",
+   "search": 19,
+   "toc": 0,
+   "content": 0,
+   "ms": 3285,
+   "err": "",
+   "sample": "万兽王座"
+  },
+  {
+   "name": "搬山",
+   "host": "https://banshanren.com",
+   "search": 11,
+   "toc": 0,
+   "content": 0,
+   "ms": 2242,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "🔞仙子破道曲"
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "http://m.biqusk.net",
+   "search": 1,
+   "toc": 0,
+   "content": 0,
+   "ms": 3650,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂笔尖中文",
+   "host": "http://www.badaoge.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 0,
+   "err": "AttributeError: module 'json' has no attribute 'JSONException'",
+   "sample": ""
+  },
+  {
+   "name": "📂新笔趣阁",
+   "host": "https://www.biquges123.com",
+   "search": 7,
+   "toc": 0,
+   "content": 0,
+   "ms": 4800,
+   "err": "ValueError: unknown url type: ''",
+   "sample": "剑来"
+  },
+  {
+   "name": "出处源-仓库💯八一中文①",
+   "host": "http://www.zwduxs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 972,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔趣阁#34",
+   "host": "https://www.bqgns.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 6562,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁㉘①",
+   "host": "https://www.yingsx.com",
+   "search": 19,
+   "toc": 0,
+   "content": 0,
+   "ms": 1683,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "云起书院",
+   "host": "https://yunqi.qq.com",
+   "search": 20,
+   "toc": 2792,
+   "content": 101,
+   "ms": 1631,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "速读谷子（优+++）",
+   "host": "https://www.shudugu.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 8624,
+   "err": "OSError: HTTP 500 https://www.shudugu.org/i/sor.aspx?key=%E5%89%91%E6%9D%A5",
+   "sample": ""
+  },
+  {
+   "name": "必去楼",
+   "host": "http://www.bequ6.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 670,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "灵感小说（优）",
+   "host": "https://m.88xiaoshuo.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 0,
+   "err": "AttributeError: module 'json' has no attribute 'JSONException'",
+   "sample": ""
+  },
+  {
+   "name": "⚡📂笔趣阁",
+   "host": "https://m.qbiqus.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 491,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁子（优+）",
+   "host": "http://www.xinbqg.com/",
+   "search": 19,
+   "toc": 1312,
+   "content": 2875,
+   "ms": 5164,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "馊虎系列（优++）",
+   "host": "https://www.erciyan.com/",
+   "search": 1,
+   "toc": 77,
+   "content": 1292,
+   "ms": 14408,
+   "err": "",
+   "sample": "傲世狂龙"
+  },
+  {
+   "name": "顶点小说b3",
+   "host": "http://www.anshuge.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1628,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "🎃168小说🎃",
+   "host": "https://www.168txt.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 8898,
+   "err": "OSError: HTTP 500 https://www.168txt.org/s/",
+   "sample": ""
+  },
+  {
+   "name": "56书库",
+   "host": "http://m.pingshuku.com",
+   "search": 20,
+   "toc": 20,
+   "content": 1304,
+   "ms": 2470,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "豆花文学",
+   "host": "https://www.douhuawenxue.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 704,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "久久小说（下载）",
+   "host": "http://m.net.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 173,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "飞卢小说",
+   "host": "http://tongren.faloo.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 98,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🐣求书网",
+   "host": "http://www.qiushu.info",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1502,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "追光阅读🎃",
+   "host": "http://touchlife.cootekservice.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 185,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "❤️笔趣阁WX🎃",
+   "host": "http://www.biqugewx.info",
+   "search": 20,
+   "toc": 1366,
+   "content": 4826,
+   "ms": 2052,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "🎃刺猬猫🎃",
+   "host": "http://www.ciweimao.com",
+   "search": 10,
+   "toc": 20,
+   "content": 8,
+   "ms": 2694,
+   "err": "",
+   "sample": "我的格斗仪怎么有点奇怪？"
+  },
+  {
+   "name": "🎃56书库🎃",
+   "host": "http://www.56pinshu.net",
+   "search": 20,
+   "toc": 1311,
+   "content": 3723,
+   "ms": 1430,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "⚡📂️笔趣阁1",
+   "host": "http://www.biquge001.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 443,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "鬼吹灯包",
+   "host": "http://www.cxbz958.info",
+   "search": 20,
+   "toc": 1311,
+   "content": 3817,
+   "ms": 1622,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "九二小说",
+   "host": "http://www.92xs.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 0,
+   "err": "AttributeError: module 'json' has no attribute 'JSONException'",
+   "sample": ""
+  },
+  {
+   "name": "新书包网",
+   "host": "https://m.jywad.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 3844,
+   "err": "OSError: HTTP 404 https://m.jywad.com/{{url=source.getKey();cookie.removeCookie(url)}}/us",
+   "sample": ""
+  },
+  {
+   "name": "蚂蚁阅读",
+   "host": "http://www.mayitxt.org",
+   "search": 20,
+   "toc": 1324,
+   "content": 2895,
+   "ms": 3074,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "九五书包🎃#2",
+   "host": "http://www.95dushu.net",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1275,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "电子书壹",
+   "host": "https://www.wurexs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1626,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "⭐ 顶点小说",
+   "host": "http://www.23us.tw",
+   "search": 20,
+   "toc": 1309,
+   "content": 3785,
+   "ms": 4023,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "小说",
+   "host": "http://www.yetianlian.info",
+   "search": 20,
+   "toc": 1323,
+   "content": 1794,
+   "ms": 1737,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "📚 梦书中文",
+   "host": "http://www.mcmssc.la",
+   "search": 19,
+   "toc": 1323,
+   "content": 1775,
+   "ms": 1672,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "爱书包",
+   "host": "https://www.ishubao.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1640,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "手机看书",
+   "host": "https://www.sjks88.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2086,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "梧桐中文",
+   "host": "https://www.wtzw.com",
+   "search": 10,
+   "toc": 52,
+   "content": 2697,
+   "ms": 1058,
+   "err": "",
+   "sample": "水车简史"
+  },
+  {
+   "name": "🎃笔趣阁🎃#5",
+   "host": "http://www.xshuquge.net",
+   "search": 20,
+   "toc": 1323,
+   "content": 1808,
+   "ms": 1484,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "键盘小说",
+   "host": "http://www.janpn.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 864,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "双语小说",
+   "host": "http://www.shubang.net/book",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2338,
+   "err": "URLError: <urlopen error [Errno 11001] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "鬼吹灯包",
+   "host": "http://www.cxbz958.com",
+   "search": 20,
+   "toc": 1311,
+   "content": 3817,
+   "ms": 2091,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "笔趣阁",
+   "host": "https://m.biqukun.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1633,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "何以笙箫默小说电脑",
+   "host": "http://www.yetianlian.net",
+   "search": 20,
+   "toc": 1323,
+   "content": 1794,
+   "ms": 1973,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "顶点中文",
+   "host": "http://wap.ddsk.la",
+   "search": 20,
+   "toc": 1311,
+   "content": 1024,
+   "ms": 4868,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "蚂蚁阅读",
+   "host": "http://www.imayitxt.com",
+   "search": 20,
+   "toc": 1324,
+   "content": 2895,
+   "ms": 3022,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "九五书包",
+   "host": "http://www.95shubao.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1405,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "安保小说",
+   "host": "http://www.2kzw.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1607,
+   "err": "UnicodeEncodeError: 'ascii' codec can't encode characters in position 68-69: ordinal not in range(12",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁🎃#41",
+   "host": "https://www.bg60.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2270,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁",
+   "host": "https://www.xbiquwx.la",
+   "search": 20,
+   "toc": 1311,
+   "content": 3723,
+   "ms": 2161,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "52书库",
+   "host": "http://www.pingshuku.com",
+   "search": 20,
+   "toc": 1311,
+   "content": 3723,
+   "ms": 3461,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "🎃梦书中文🎃#2",
+   "host": "http://m.mcxs.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 948,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "🎃|COS仓库🎃",
+   "host": "https://cosck.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 2758,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "书客吧🎃#2",
+   "host": "https://www.shuke8.cc",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4972,
+   "err": "OSError: HTTP 404 https://www.shuke8.cc/{{url=source.getKey();cookie.removeCookie(url)}}/",
+   "sample": ""
+  },
+  {
+   "name": "就爱文学",
+   "host": "http://m.92xs.la",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 700,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "四零二零",
+   "host": "http://www.iwurexs.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1630,
+   "err": "URLError: <urlopen error [Errno 11004] getaddrinfo failed>",
+   "sample": ""
+  },
+  {
+   "name": "唐三中文",
+   "host": "http://www.tangsanshu.org",
+   "search": 20,
+   "toc": 0,
+   "content": 0,
+   "ms": 1869,
+   "err": "",
+   "sample": "剑来"
+  },
+  {
+   "name": "新奇书网",
+   "host": "http://m.qishula.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 653,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "斗破苍穹",
+   "host": "http://www.doupocangqiong.info",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4045,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "📂爱看书/零点小说#书源.com",
+   "host": "https://www.lingdxsw.org",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 4018,
+   "err": "OSError: HTTP 404 https://www.lingdxsw.org/{{url=source.getKey();cookie.removeCookie(url)",
+   "sample": ""
+  },
+  {
+   "name": "🎃得间小说🎃#3",
+   "host": "https://wechat.idejian.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 246,
+   "err": "",
+   "sample": ""
+  },
+  {
+   "name": "笔趣阁🎃#71",
+   "host": "https://m.muxtoo.com",
+   "search": 0,
+   "toc": 0,
+   "content": 0,
+   "ms": 1304,
+   "err": "",
+   "sample": ""
+  }
+ ]
+}
