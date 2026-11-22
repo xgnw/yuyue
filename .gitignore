@@ -1,0 +1,16 @@
+# 依赖 / 构建产物
+node_modules/
+.wrangler/
+.vercel/
+__pycache__/
+*.pyc
+.venv/
+
+# 本地放的全量书源（6MB，别提交；构建脚本优先读它）
+data/sources-full.json
+api/data/sources-full.json
+
+# 调试用截图与浏览器 profile
+_analysis/
+/shot/
+*.log
