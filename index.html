@@ -2088,10 +2088,14 @@ routes.sources = () => {
     <div class="title">书源管理 · ${LIVE.sources.total||L.length}</div>
   </div>
   <div class="scroll pad">
-    <button class="btn line block" style="margin-top:12px" data-act="import-source">${ic('plus','ico sm')} 导入书源（URL / 粘贴 JSON）</button>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn line" style="flex:1;min-width:0;margin:0;white-space:nowrap" data-act="import-source">${ic('plus','ico sm')} 导入书源</button>
+      <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 16px;white-space:nowrap" data-act="export-sources" title="导出当前书源清单">${ic('share','ico sm')} 导出</button>
+    </div>
     <div style="font-size:11px;color:var(--muted);padding:8px 2px 2px;line-height:1.8">
       导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
       含 @js / @webview / 需登录的书源云端跑不了，导入时会自动跳过。
+      「导出」得到的是当前生效的整份清单，可合并进仓库让所有设备共用。
     </div>
     <div class="card" style="padding:14px;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.8">
       共 ${LIVE.sources.total||L.length} 个书源，参与搜索 ${cnt('ok')} 个全链路可用 + 未测源。
@@ -2348,6 +2352,21 @@ const ACTIONS = {
     api('/api/sources/test', {method:'POST', body:{id, key: (S.query||'剑来')}})
       .then(d => toast(d.ok ? `可用：搜到 ${d.count} 条（${d.ms}ms）` : '这个源没返回结果'))
       .catch(e => toast('测试失败：' + e.message));
+  },
+  'export-sources'(){
+    toast('正在整理书源…');
+    api('/api/sources/export').then(d => {
+      const list = d.list || [];
+      if(!list.length) return toast('没有可导出的书源');
+      const name = `愉阅书源-${new Date().toISOString().slice(0,10)}.json`;
+      const blob = new Blob([JSON.stringify(list, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 2000);
+      toast(`已导出 ${list.length} 个书源：${name}`);
+    }).catch(e => toast('导出失败：' + e.message));
   },
   'import-source'(){
     modal(`<h4 style="text-align:left">导入书源</h4>

@@ -17,7 +17,13 @@
     try { const a = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
   }
   function saveCustom(list) {
-    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); } catch (e) { /* 超限就只保留本次会话 */ }
+    const slim = list.map(s => ({
+      bookSourceName: s.bookSourceName, bookSourceUrl: s.bookSourceUrl, bookSourceGroup: s.bookSourceGroup,
+      bookSourceType: s.bookSourceType, header: s.header,
+      enabled: s.enabled !== false, searchUrl: s.searchUrl,
+      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent
+    }));
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(slim)); } catch (e) { /* 超限就只保留本次会话 */ }
   }
 
   // 删掉的书源记在本地名单里，页面加载时补发给函数（函数重启后也能保持删除状态）

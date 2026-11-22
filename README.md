@@ -83,6 +83,7 @@ vercel --prod
 | POST | `/api/sources/import` | `{url}` 或 `{json}` 导入书源；过滤 JS 源、去重，返回 added/total/skippedJs/imported |
 | POST | `/api/sources/delete` | `{urls}` 或 `{url}` 删除书源，返回 total/removed/urls |
 | POST | `/api/sources/purge` | 一次删掉体检为 dead 的源，返回 total/removed/urls |
+| GET | `/api/sources/export` | 导出当前生效的整份清单（内置 + 导入 - 删除），用于合并进仓库 |
 | GET | `/api/search?key=&limit=` | 并发搜索（limit 上限 300，默认 60） |
 | GET | `/api/book?src=&url=` | 详情 + 目录 |
 | GET | `/api/content?src=&url=&book=` | 单章正文（`book` 用于前端缓存命中） |
@@ -101,6 +102,21 @@ node scripts/build-sources.mjs
 如果输出里 `searchUrl: 0`，说明线上导出缺字段，改用本地全量文件重跑。
 
 也可直接复用 cloudflare 分支的 `public/sources.json`（同一份清单，格式兼容）。
+
+### 让自己导入的书源在所有设备生效
+
+1. 任意设备打开 **书源管理 → 导出**，得到 `愉阅书源-日期.json`；
+2. 把文件放到本项目根目录，执行：
+
+```bash
+node scripts/merge-export.mjs 愉阅书源-2026-11-21.json          # 只追加新源（默认，安全）
+node scripts/merge-export.mjs 愉阅书源-2026-11-21.json --sync   # 仓库清单 = 导出清单，连删除一起同步
+```
+
+3. `git add -A && git commit -m "更新书源清单" && git push`，Vercel 重新部署后所有设备都是这份清单。
+
+脚本会过滤 JS 源、按 `bookSourceUrl` 去重、写回 `api/data/sources.json`，并把新源记进
+`api/data/extra-sources.json`——这样以后重跑 `build-sources.mjs` 也不会把导入的源冲掉。
 
 ## 七、已知限制
 

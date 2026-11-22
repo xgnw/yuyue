@@ -299,7 +299,7 @@ def api_import():
         x.setdefault('_audit', {})
         x['_id'] = src_id(x)
     _STATE['sources'] = cur + keep
-    SLIM = ('bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'enabled',
+    SLIM = ('bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'bookSourceType', 'header', 'enabled',
             'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent')
     imported = [{k: x[k] for k in SLIM if k in x} for x in keep]
     return jsonify({'added': len(keep), 'total': len(_STATE['sources']), 'skippedJs': js, 'imported': imported})
@@ -332,6 +332,15 @@ def api_purge():
     keep = [s for s in cur if s.get('bookSourceUrl') not in urlset]
     _STATE['sources'] = keep
     return jsonify({'ok': True, 'total': len(keep), 'removed': len(dead), 'urls': urls})
+
+
+@app.route('/api/sources/export')
+def api_export():
+    """导出当前生效的整份清单（内置 + 导入 - 删除），拿去合并进仓库 data/sources.json"""
+    KEEP = ('bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'bookSourceType',
+            'enabled', 'header', 'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent')
+    out = [{k: s[k] for k in KEEP if s.get(k) not in (None, '')} for s in sources()]
+    return jsonify({'ok': True, 'count': len(out), 'list': out})
 
 
 @app.route('/api/search')
