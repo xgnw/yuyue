@@ -463,7 +463,7 @@
   async function searchOne(s, key, page = 1) {
     if (!supported(s)) throw new Error('脚本规则，浏览器版不支持');
     const req = searchRequest(s, key, page);
-    const pageRes = await fetchRaw(req.url, { method: req.method, body: req.body, contentType: req.contentType, referer: baseUrl(s) + '/' });
+    const pageRes = await fetchRaw(req.url, { method: req.method, body: req.body, contentType: req.contentType, referer: baseUrl(s) + '/', timeout: 9000 });
     const doc = parseHTML(pageRes.text);
     const rs = s.ruleSearch || {};
     const ctx = { root: doc, sourceUrl: baseUrl(s), key, page };
@@ -500,21 +500,8 @@
     return out;
   }
 
-  async function search(key, limit = 14, page = 1) {
-    const pool = SOURCES.filter(s => enabled(s) && supported(s)).slice(0, Math.max(1, limit));
-    const t0 = performance.now();
-    const results = [], stats = [];
-    await Promise.all(pool.map(async s => {
-      const ts = performance.now();
-      try {
-        const rs = await searchOne(s, key, page);
-        results.push(...rs);
-        stats.push({ source: disp(s.bookSourceName), id: s._id, count: rs.length, err: '', ms: Math.round(performance.now() - ts) });
-      } catch (e) {
-        stats.push({ source: disp(s.bookSourceName), id: s._id, count: 0, err: String(e.message || e).slice(0, 60), ms: Math.round(performance.now() - ts) });
-      }
-    }));
-
+  /* 把原始命中聚合成「书名 -> 多来源」的结果，搜索中途也会调用（返部分结果） */
+  function buildResult(key, results, stats, t0, partial, poolTotal) {
     const agg = {};
     for (const r of results) {
       const k = r.name.replace(/[\s《》]+/g, '');
@@ -543,10 +530,43 @@
     }
     const out = Object.values(agg).sort((a, b) => (a.rel - b.rel) || (b.sources.length - a.sources.length));
     return {
-      q: key, took: Math.round(performance.now() - t0), results: out,
-      raw: results.length, stats,
-      exact: out.filter(x => x.rel === 0).length, near: out.filter(x => x.rel === 1).length
+      q: key, took: Math.round(performance.now() - t0), results: out, raw: results.length, stats,
+      exact: out.filter(x => x.rel === 0).length, near: out.filter(x => x.rel === 1).length,
+      partial: !!partial, done: stats.length, total: poolTotal || stats.length
     };
+  }
+
+  async function search(key, limit = 400, page = 1, onBatch) {
+    // 全部启用且规则可跑的源都参与搜索，排序按实测状态：可用 > 部分可用 > 未测 > 失效
+    // （limit 只作为上限保护，默认 400，够覆盖导入后的总量）
+    const rank = s => s._status === 'ok' ? 0 : s._status === 'part' ? 1 : s._status === 'dead' ? 3 : 2;
+    const pool = SOURCES.filter(s => enabled(s) && supported(s)).sort((a, b) => rank(a) - rank(b)).slice(0, Math.max(1, limit));
+    const t0 = performance.now();
+    const results = [], stats = [];
+    let lastEmit = 0;
+    const emit = () => {
+      if (!onBatch) return;
+      const now = performance.now();
+      if (now - lastEmit < 500) return; // 最多每 0.5s 推一次，避免频繁重绘
+      lastEmit = now;
+      try { onBatch(buildResult(key, results, stats, t0, true, pool.length)); } catch (e) { /* 回调出错不影响搜索 */ }
+    };
+    // 其他源全部并发抓（浏览器对同一域名本来就有连接上限，这里不再人为压并发）
+    await Promise.all(pool.map(async s => {
+      const ts = performance.now();
+      try {
+        const rs = await searchOne(s, key, page);
+        results.push(...rs);
+        stats.push({ source: disp(s.bookSourceName), id: s._id, count: rs.length, err: '', ms: Math.round(performance.now() - ts) });
+      } catch (e) {
+        stats.push({ source: disp(s.bookSourceName), id: s._id, count: 0, err: String(e.message || e).slice(0, 60), ms: Math.round(performance.now() - ts) });
+      }
+      emit();
+    }));
+
+    const res = buildResult(key, results, stats, t0, false, pool.length);
+    if (onBatch) { try { onBatch(res); } catch (e) { } }
+    return res;
   }
 
   /* ------------------------------------------------------------ 目录 */

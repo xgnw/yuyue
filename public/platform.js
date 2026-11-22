@@ -62,7 +62,7 @@
 
   async function handleSearch(q) {
     const key = q.get('key') || '';
-    const limit = Number(q.get('limit') || 14);
+    const limit = Number(q.get('limit') || 400);
     return ShuyeEngine.search(key, limit);
   }
 

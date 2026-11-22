@@ -1051,14 +1051,25 @@ function syncReaderFoot(){
 function liveSearch(key){
   LIVE.search = { key, state:'loading', res:null, err:'' };
   render();
-  api(`/api/search?key=${encodeURIComponent(key)}&limit=14`).then(d => {
+  const done = d => {
     LIVE.search = { key, state:'done', res:d, err:'' };
     LIVE.sources = Object.assign({}, LIVE.sources);
     if(S.view === 'search' && (S.query||'') === key) render();
-  }).catch(e => {
+  };
+  const fail = e => {
     LIVE.search = { key, state:'error', res:null, err:e.message };
     if(S.view === 'search' && (S.query||'') === key) render();
-  });
+  };
+  // 云端版直接在浏览器里跑引擎：边搜边把已完成的结果推上来，不用等全部源跑完
+  if(window.ShuyeEngine && window.PLAT && PLAT.mode === 'cloudflare'){
+    ShuyeEngine.search(key, 400, 1, part => {
+      if((S.query||'') !== key || part.partial === false) return;
+      LIVE.search = { key, state:'loading', res:part, err:'' };
+      if(S.view === 'search') render();
+    }).then(done).catch(fail);
+    return;
+  }
+  api(`/api/search?key=${encodeURIComponent(key)}&limit=400`).then(done).catch(fail);
 }
 
 function loadSourceList(force){
@@ -1588,8 +1599,11 @@ routes.search = () => {
   </div>
   <div class="scroll pad">
     ${q ? `<div class="result-note">${
-      loading ? `正在向 ${LIVE.sources.enabled || 0} 个书源并发检索…`
-      : (liveList.length
+      loading
+        ? (liveList.length
+            ? `已命中 ${liveList.length} 本 · 已查 ${liveRes.done || 0}/${liveRes.total || LIVE.sources.enabled || 0} 个源，后台继续检索…`
+            : `正在向 ${LIVE.sources.enabled || 0} 个书源并发检索…`)
+        : (liveList.length
           ? (liveList.some(r=>r.rel<2)
               ? `在线书源命中 ${liveList.length} 本（${liveList.filter(r=>r.rel<2).length} 本与书名相关）· ${liveRes.took}ms · ${failedSrc} 个源失败`
               : `在线书源返回 ${liveList.length} 本相近结果 · ${liveRes.took}ms · ${failedSrc} 个源失败`)
@@ -1612,7 +1626,7 @@ routes.search = () => {
         </div>
       </div>` : ''}
 
-    ${loading ? `<div class="skel"></div><div class="skel"></div><div class="skel"></div>` : ''}
+    ${loading && !liveList.length ? `<div class="skel"></div><div class="skel"></div><div class="skel"></div>` : ''}
     ${failed ? `<div class="notice"><div class="nt">检索失败</div><div class="nd">${esc(st.err||'')}</div>
       <div class="nacts"><button class="btn ghost" data-act="retry-online">重试</button></div></div>` : ''}
 
