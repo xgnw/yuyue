@@ -2083,6 +2083,11 @@ routes.sources = () => {
     <div class="title">书源管理 · ${LIVE.sources.total||L.length}</div>
   </div>
   <div class="scroll pad">
+    <button class="btn line block" style="margin-top:12px" data-act="import-source">${ic('plus','ico sm')} 导入书源（URL / 粘贴 JSON）</button>
+    <div style="font-size:11px;color:var(--muted);padding:8px 2px 2px;line-height:1.8">
+      导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
+      含 @js / @webview / 需登录的书源云端跑不了，导入时会自动跳过。
+    </div>
     <div class="card" style="padding:14px;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.8">
       共 ${LIVE.sources.total||L.length} 个书源，参与搜索 ${cnt('ok')} 个全链路可用 + 未测源。
       状态是本机实测结果：搜索、目录、正文三段都跑通的才算「全链路」。
@@ -2101,11 +2106,6 @@ routes.sources = () => {
         <button class="btn ghost" style="height:28px;padding:0 9px;font-size:11px;border-radius:8px" data-act="test-source" data-id="${s.id}">测试</button>
         <button class="switch ${s.enabled?'on':''}" data-act="toggle-source" data-id="${s.id}"><i></i></button>
       </div>`).join('')}
-    <button class="btn line block" style="margin-top:14px" data-act="import-source">${ic('plus','ico sm')} 导入书源（URL / 粘贴 JSON）</button>
-    <div style="font-size:11px;color:var(--muted);padding:10px 2px;line-height:1.8">
-      导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
-      需要 @js / @webview / 登录的书源本引擎不支持，会一直显示「未测」。
-    </div>
     <div class="spacer-b"></div>
   </div>`;
 };
