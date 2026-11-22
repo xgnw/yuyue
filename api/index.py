@@ -225,10 +225,33 @@ def api_test():
     t0 = time.time()
     try:
         rs = S.search(s, b.get('key') or '剑来', 1, timeout=10)
+        # 只测了搜索这一环：搜到就算「至少可搜索」，原来全链路可用的继续保持
+        status = ('ok' if s.get('_status') == 'ok' else 'part') if rs else 'dead'
+        s['_status'] = status
         return jsonify({'ok': bool(rs), 'count': len(rs), 'ms': int((time.time() - t0) * 1000),
-                        'sample': rs[0]['name'] if rs else ''})
+                        'sample': rs[0]['name'] if rs else '', 'status': status,
+                        'url': s.get('bookSourceUrl')})
     except Exception as e:
-        return jsonify({'ok': False, 'err': str(e)[:80]})
+        s['_status'] = 'dead'
+        return jsonify({'ok': False, 'err': str(e)[:80], 'status': 'dead',
+                        'url': s.get('bookSourceUrl')})
+
+
+@app.route('/api/sources/status', methods=['POST'])
+def api_status():
+    """把浏览器记下来的测试结果补发进函数内存（冷启动后依然显示真实状态）"""
+    b = request.get_json(force=True, silent=True) or {}
+    m = b.get('map') or {}
+    if not isinstance(m, dict):
+        return jsonify({'error': 'map 必须是 {url: status}'}), 400
+    arr = sources()
+    applied = 0
+    for s in arr:
+        u = s.get('bookSourceUrl')
+        if u in m:
+            s['_status'] = m[u]
+            applied += 1
+    return jsonify({'ok': True, 'applied': applied, 'total': len(arr)})
 
 
 JS_RULE_RE = re.compile(r'(@js:|<js>|java\.)')

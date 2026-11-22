@@ -2104,9 +2104,13 @@ routes.sources = () => {
     <div class="rank-tabs" style="padding:12px 0 8px">
       ${FILTERS.map(([k,n])=>`<button class="r ${f===k?'on':''}" data-act="src-filter" data-k="${k}">${n} ${cnt(k)}</button>`).join('')}
     </div>
-    ${cnt('dead') ? `<div style="display:flex;justify-content:flex-end;padding:0 2px 8px">
-      <button class="btn ghost" style="height:30px;font-size:11.5px" data-act="purge-dead">${ic('trash','ico sm')} 清理失效 ${cnt('dead')} 个</button>
-    </div>` : ''}
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 2px 8px;flex-wrap:wrap">
+      <button class="btn ghost" style="height:30px;font-size:11.5px" data-act="test-all">${ic('check','ico sm')} ${LIVE.testing?'停止测试':`测试全部 ${L.length} 个`}</button>
+      ${cnt('dead') ? `<button class="btn ghost" style="height:30px;font-size:11.5px" data-act="purge-dead">${ic('trash','ico sm')} 清理失效 ${cnt('dead')} 个</button>` : ''}
+    </div>
+    ${LIVE.testing?`<div style="font-size:11px;color:var(--muted);padding:0 2px 10px;text-align:right;line-height:1.7">
+      已测 ${LIVE.testing.done}/${LIVE.testing.total} · 可用 ${LIVE.testing.ok} · 仅搜索 ${LIVE.testing.part} · 失效 ${LIVE.testing.dead}
+    </div>`:''}
     ${LIVE.srcLoading?`<div class="skel"></div><div class="skel"></div>`:''}
     ${list.map(s=>`
       <div class="src-row">
@@ -2350,8 +2354,66 @@ const ACTIONS = {
     const id = el.dataset.id;
     toast('正在测试…');
     api('/api/sources/test', {method:'POST', body:{id, key: (S.query||'剑来')}})
-      .then(d => toast(d.ok ? `可用：搜到 ${d.count} 条（${d.ms}ms）` : '这个源没返回结果'))
+      .then(d => {
+        const s = (LIVE.srcList||[]).find(x=>x.id===id);
+        if(s && d.status) s.status = d.status;
+        toast(d.ok ? `可用：搜到 ${d.count} 条（${d.ms}ms）` : '这个源没返回结果'); render();
+      })
       .catch(e => toast('测试失败：' + e.message));
+  },
+  /* 批量体检：并发 6 个源，边测边刷列表；失败的重试一次，避免偶发网络问题误判 */
+  'test-all'(){
+    if(LIVE.testing){ LIVE.testStop = true; toast('正在停止，等当前几个测完…'); return; }
+    const all = (LIVE.srcList||[]).slice();
+    if(!all.length) return toast('没有可测试的书源');
+    const key = (S.query||'').trim() || '剑来';
+    LIVE.testing = {done:0, total:all.length, ok:0, part:0, dead:0};
+    LIVE.testStop = false;
+    render();
+    toast(`开始测试 ${all.length} 个书源（搜索词：${key}）`);
+    let idx = 0, running = 0, painted = 0;
+    const POOL = 6;
+    const paint = force => {
+      if(!force && LIVE.testing.done - painted < 8) return;
+      painted = LIVE.testing.done;
+      render();
+    };
+    const finish = () => {
+      const t = LIVE.testing; LIVE.testing = null; LIVE.srcList = null;
+      loadSourceList();
+      toast(`测试完成：可用 ${t.ok} · 仅搜索 ${t.part} · 失效 ${t.dead}${t.dead?'（已重试一次）':''}`);
+    };
+    const once = s => api('/api/sources/test', {method:'POST', body:{id:s.id, key}});
+    const settle = (s, st) => {
+      s.status = st;
+      const t = LIVE.testing;
+      if(st === 'dead') t.dead++; else if(st === 'part') t.part++; else t.ok++;
+    };
+    const run = s => once(s)
+      .then(d => {
+        const st = d.status || (d.ok ? 'part' : 'dead');
+        if(st !== 'dead') return settle(s, st);
+        if(s._retried) return settle(s, 'dead');
+        s._retried = true;
+        return new Promise(r => setTimeout(r, 800)).then(() => once(s))
+          .then(d2 => settle(s, d2.status || (d2.ok ? 'part' : 'dead')))
+          .catch(() => settle(s, 'dead'));
+      })
+      .catch(() => {
+        if(s._retried) return settle(s, 'dead');
+        s._retried = true;
+        return new Promise(r => setTimeout(r, 800)).then(() => once(s))
+          .then(d2 => settle(s, d2.status || (d2.ok ? 'part' : 'dead')))
+          .catch(() => settle(s, 'dead'));
+      });
+    const next = () => {
+      if(LIVE.testStop){ if(running === 0) finish(); return; }
+      const s = all[idx++];
+      if(!s){ if(running === 0) finish(); return; }
+      running++;
+      run(s).then(() => { running--; LIVE.testing.done++; paint(); next(); });
+    };
+    for(let i = 0; i < Math.min(POOL, all.length); i++) next();
   },
   'export-sources'(){
     toast('正在整理书源…');

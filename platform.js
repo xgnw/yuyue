@@ -12,6 +12,7 @@
 
   const CUSTOM_KEY = 'yuyue.sources.custom';
   const REM_KEY = 'yuyue.sources.removed';
+  const ST_KEY = 'yuyue.sources.status';
 
   function customList() {
     try { const a = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
@@ -32,6 +33,15 @@
   }
   function saveRemoved(list) {
     try { localStorage.setItem(REM_KEY, JSON.stringify(list)); } catch (e) { }
+  }
+
+  // 手动测试出来的状态，按 URL 记；函数内存丢了也能补发回去
+  function statusMap() {
+    try { const m = JSON.parse(localStorage.getItem(ST_KEY) || '{}'); return (m && typeof m === 'object') ? m : {}; } catch (e) { return {}; }
+  }
+  function saveStatus(url, status) {
+    const m = statusMap(); m[url] = status;
+    try { localStorage.setItem(ST_KEY, JSON.stringify(m)); } catch (e) { }
   }
 
   async function request(pathAndQuery, opts = {}) {
@@ -62,6 +72,10 @@
     if (removed.length) {
       try { await request('/api/sources/delete', { method: 'POST', body: { urls: removed } }); } catch (e) { }
     }
+    const st = statusMap();
+    if (Object.keys(st).length) {
+      try { await request('/api/sources/status', { method: 'POST', body: { map: st } }); } catch (e) { }
+    }
   })();
 
   async function call(pathAndQuery, opts = {}) {
@@ -87,6 +101,13 @@
         const merged = Array.from(new Set(old.concat(d.urls)));
         saveRemoved(merged);
       }
+      return d;
+    }
+
+    // 单源测试的结果也存本地，刷新后不会退回构建期的旧状态
+    if (path === '/api/sources/test') {
+      const d = await request(pathAndQuery, opts);
+      if (d && d.status && d.url) saveStatus(d.url, d.status);
       return d;
     }
 

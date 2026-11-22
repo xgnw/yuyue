@@ -84,6 +84,7 @@ vercel --prod
 | POST | `/api/sources/delete` | `{urls}` 或 `{url}` 删除书源，返回 total/removed/urls |
 | POST | `/api/sources/purge` | 一次删掉体检为 dead 的源，返回 total/removed/urls |
 | GET | `/api/sources/export` | 导出当前生效的整份清单（内置 + 导入 - 删除），用于合并进仓库 |
+| POST | `/api/sources/status` | `{map:{url:status}}` 把浏览器记下的测试结果补发进函数内存 |
 | GET | `/api/search?key=&limit=` | 并发搜索（limit 上限 300，默认 60） |
 | GET | `/api/book?src=&url=` | 详情 + 目录 |
 | GET | `/api/content?src=&url=&book=` | 单章正文（`book` 用于前端缓存命中） |
@@ -102,6 +103,12 @@ node scripts/build-sources.mjs
 如果输出里 `searchUrl: 0`，说明线上导出缺字段，改用本地全量文件重跑。
 
 也可直接复用 cloudflare 分支的 `public/sources.json`（同一份清单，格式兼容）。
+
+### 批量测试书源
+
+书源管理页有「测试全部 N 个」：并发 6 个源，边测边更新列表和进度（`已测 x/y · 可用 · 仅搜索 · 失效`），
+失败自动重试一次；结果写进函数内存，同时存浏览器 `localStorage`，页面加载时补发，冷启动后仍然显示真实状态。
+批量测试只验证搜索环节——「仅搜索」表示能搜到书，不代表目录/正文一定通。
 
 ### 让自己导入的书源在所有设备生效
 
@@ -125,6 +132,7 @@ node scripts/merge-export.mjs 愉阅书源-2026-11-21.json --sync   # 仓库清�
 | 书源启用状态 | 无数据库，toggle 只在当前函数实例内存里生效，冷启动后恢复默认 |
 | 导入的书源 | 同样只活在函数实例内存；浏览器把这份存 `localStorage`（键 `yuyue.sources.custom`），每次加载页面自动补发，冷启动后依然在 |
 | 删除的书源 | 浏览器把删除名单存 `localStorage`（键 `yuyue.sources.removed`），加载时补发给函数；只影响本机，重新导入可恢复 |
+| 测试状态 | 存 `localStorage`（键 `yuyue.sources.status`），加载时补发 `/api/sources/status`；批量测试只验证搜索环节，失败会自动重试一次 |
 | JS 书源 | Python 引擎不支持 `<js>`，构建期已剔除；导入时也会自动跳过（提示里显示跳过数量） |
 | 缓存 | 在浏览器 IndexedDB，换设备就没了；服务端不存正文 |
 | 搜索耗时 | 全量源（150 个左右）约 25~40 秒；线程池 24 并发 + 单源 5s 超时，函数上限 60s。只想要快就传小一点的 `limit` |
