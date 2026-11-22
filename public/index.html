@@ -136,6 +136,8 @@ img{display:block}
 .cover.md{width:66px;height:90px}
 .cover.lg{width:104px;height:142px;border-radius:12px}
 .cover.lg b{font-size:16px;letter-spacing:4px}
+/* 真实封面图盖在渐变底上；加载失败就 remove，露出渐变书名 */
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
 
 /* ==========================================================================
    底部导航
@@ -185,8 +187,8 @@ img{display:block}
 .rank-tabs .r{flex:none;height:30px;padding:0 14px;border-radius:8px;background:#EDF1FF;color:#4B5A86;font-size:12.5px;display:flex;align-items:center}
 .rank-tabs .r.on{background:linear-gradient(135deg,#E6ECFF,#DDE3FF);color:#1B3084;font-weight:800;box-shadow:inset 0 0 0 1px #C9D5FF}
 
-.rank-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}
-.rank-item{display:flex;gap:9px;align-items:flex-start}
+.rank-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px 12px}
+.rank-item{display:flex;gap:9px;align-items:flex-start;min-width:0}
 .rank-item .meta{min-width:0;display:flex;flex-direction:column;gap:5px}
 .rank-item .nm{font-size:13.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .rank-item .au{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1088,6 +1090,191 @@ function loadSourceList(force){
   }).catch(e => { LIVE.srcLoading = false; LIVE.srcList = []; toast('书源列表加载失败：'+e.message); if(S.view==='sources') render(); });
 }
 
+/* ==========================================================================
+   首页实时榜：候选书目 → 真实书源定向检索 → 按「收录源数」排序
+   - 每个分类有一组候选书名，逐本去书源里搜，命中的书才知道作者/封面/简介/有几个源
+   - 结果按收录源数排序，2 小时缓存一次；点「刷新」重跑
+   - 打开榜单里的书 = 走普通在线书详情（openRemote），可直接读
+   ========================================================================== */
+const HOT_CATS = ['总榜','武侠','言情','悬疑','科幻','美食'];
+const HOT_SEEDS = {
+  '总榜':['剑来','斗破苍穹','三体','诡秘之主','庆余年','盗墓笔记'],
+  '武侠':['射雕英雄传','神雕侠侣','倚天屠龙记','天龙八部','笑傲江湖','鹿鼎记'],
+  '言情':['何以笙箫默','微微一笑很倾城','步步惊心','东宫','三生三世十里桃花','杉杉来吃'],
+  '悬疑':['盗墓笔记','鬼吹灯','心理罪','十宗罪','法医秦明','无证之罪'],
+  '科幻':['三体','球状闪电','流浪地球','吞噬星空','银河帝国','超新星纪元'],
+  '美食':['美食供应商','异世界的美食家','食戟之灵','中华小当家','孤独的美食家','舌尖上的中国']
+};
+const HOT_LIMIT = 24;            // 每个候选只查前 24 个源（够快，也不至于把源站打爆）
+const HOT_TTL = 2 * 3600 * 1000; // 缓存 2 小时
+const HOT_POOL = 3;              // 同时跑 3 个候选
+const HOT_STORE = 'shiyue.hot.v1';
+const HOT_SHOW = 8;
+
+function hotAll(){
+  try{ return JSON.parse(localStorage.getItem(HOT_STORE) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+function hotSaveAll(m){
+  try{ localStorage.setItem(HOT_STORE, JSON.stringify(m)); }catch(e){}
+}
+function hotNorm(s){
+  return String(s||'').replace(/[\s《》〈〉「」『』（）()\[\]·•,，。、:：;；\-—_|!！?？"“”'']+/g,'').toLowerCase();
+}
+function hotAgo(ts){
+  if(!ts) return '';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if(m < 1) return '刚刚';
+  if(m < 60) return m + ' 分钟前';
+  const h = Math.round(m / 60);
+  if(h < 24) return h + ' 小时前';
+  return Math.round(h / 24) + ' 天前';
+}
+function hotRender(){ if(S.view === 'home') render(); }
+
+/* 从一次搜索结果里挑出「就是这本」的那条：书名必须精确等于候选（允许「书名（精校版）」这类括号后缀）。
+   近似命中的同人/长尾书（如「从笑傲江湖开始横推武道」）不算这本书，否则榜单会被带偏 */
+function hotPick(res, seed){
+  const list = (res && res.results) || [];
+  const n = hotNorm(seed);
+  const same = x => {
+    const s = hotNorm(x.name);
+    return s === n || s.replace(/[（(][^）)]*[)）]$/, '') === n;
+  };
+  const matches = list.filter(same);
+  if(!matches.length) return null;
+  const best = matches[0];
+  const variants = best.variants || [];
+  // 同一个书名在多源都有，作者/简介/封面取各源里最像样的那份
+  const withCover = matches.find(m => hotCleanCover(m.cover));
+  const bestIntro = matches.reduce((a, m) => ((m.intro || '').length > (a || '').length ? m.intro : a), '');
+  const bestAuthor = (matches.find(m => (m.author || '').trim() && !/佚名/.test(m.author)) || best).author;
+  return {
+    name: best.name, seed,
+    author: bestAuthor || '', intro: bestIntro || '',
+    cover: withCover ? hotCleanCover(withCover.cover) : '', coverId: withCover ? (withCover.sourceId || '') : '',
+    sourceId: best.sourceId || '', sourceName: best.sourceName || '',
+    variants, count: Math.max(1, variants.length || (best.sources || []).length || 1)
+  };
+}
+
+/* 有些源没封面时给一张「暂无封面」占位图，这种不要显示图片 */
+function hotCleanCover(u){
+  const s = String(u || '');
+  if(!s) return '';
+  if(/noimg|nocover|no-image|no_image|nophoto|placeholder|blank|default[-_]?(cover|img|book)|365book|book365/i.test(s)) return '';
+  return s;
+}
+
+function hotSort(items){
+  items.sort((a, b) => (b.count - a.count) || String(a.name).localeCompare(String(b.name), 'zh'));
+  return items;
+}
+
+/* 汇总一个分类；force=true 忽略缓存重跑。返回 Promise，切分类会作废上一次 */
+function hotStart(cat, force){
+  cat = cat || S.rankCat || '总榜';
+  const seeds = HOT_SEEDS[cat] || [];
+  const cached = hotAll()[cat];
+  LIVE.hot = LIVE.hot || {};
+  const token = (LIVE.hot.token || 0) + 1;
+
+  if(!force && cached && cached.at && (Date.now() - cached.at) < HOT_TTL){
+    LIVE.hot = { cat, token, state:'ready', items: hotSort((cached.items || []).slice()),
+                 at: cached.at, done: seeds.length, total: seeds.length, err:'' };
+    return Promise.resolve(LIVE.hot);
+  }
+  if(!seeds.length){
+    LIVE.hot = { cat, token, state:'ready', items:[], at: 0, done:0, total:0, err:'没有候选书目' };
+    return Promise.resolve(LIVE.hot);
+  }
+
+  const items = hotSort((cached && cached.items || []).slice()); // 先拿旧数据占位
+  LIVE.hot = { cat, token, state:'loading', items, at: (cached && cached.at) || 0,
+               done:0, total: seeds.length, err:'' };
+  hotRender();
+
+  const merge = pick => {
+    if(!pick) return;
+    const k = hotNorm(pick.name);
+    const at = items.findIndex(x => hotNorm(x.name) === k);
+    if(at >= 0){ if(pick.count >= items[at].count) items[at] = pick; }
+    else items.push(pick);
+    hotSort(items);
+  };
+
+  return new Promise(resolve => {
+    let running = 0, idx = 0;
+    const finish = () => {
+      if(LIVE.hot.token !== token) return resolve(LIVE.hot);   // 期间切了分类/重跑了别的
+      LIVE.hot.state = 'ready';
+      LIVE.hot.at = Date.now();
+      LIVE.hot.items = items.slice(0, HOT_SHOW);
+      const m = hotAll();
+      m[cat] = { at: LIVE.hot.at, items: LIVE.hot.items };
+      hotSaveAll(m);
+      hotRender();
+      resolve(LIVE.hot);
+    };
+    const tick = () => {
+      if(LIVE.hot.token !== token) return resolve(LIVE.hot);
+      if(idx >= seeds.length && running === 0) return finish();
+      while(running < HOT_POOL && idx < seeds.length){
+        const seed = seeds[idx++]; running++;
+        api(`/api/search?key=${encodeURIComponent(seed)}&limit=${HOT_LIMIT}`)
+          .then(d => merge(hotPick(d, seed)))
+          .catch(() => {})
+          .then(() => {
+            running--; LIVE.hot.done = (LIVE.hot.done || 0) + 1;
+            if(LIVE.hot.token === token){ LIVE.hot.items = items.slice(0, HOT_SHOW); hotRender(); }
+            tick();
+          });
+      }
+    };
+    tick();
+  });
+}
+
+/* 首页用到的一本书的数据（缓存里的分类榜结果） */
+function hotItemAt(cat, i){
+  const m = hotAll()[cat];
+  return m && m.items ? m.items[i] : null;
+}
+/* 真实热词：搜索历史 + 各分类榜单里已经汇总出的书名 */
+function hotWords(){
+  const out = [];
+  const push = t => { const s = String(t||'').trim(); if(s && out.indexOf(s) < 0) out.push(s); };
+  (S.searchHistory || []).forEach(push);
+  const m = hotAll();
+  HOT_CATS.forEach(c => ((m[c] && m[c].items) || []).forEach(x => push(x.name)));
+  return out.slice(0, 10);
+}
+/* 有些源没封面时给一张近乎纯白、写着「暂无封面」的图；这种图删掉，露出渐变书名 */
+function hotImgOk(img){
+  try{
+    if(img.naturalWidth < 60 || img.naturalHeight < 60){ img.remove(); return; }
+    const cv = document.createElement('canvas'); cv.width = 10; cv.height = 10;
+    const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, 10, 10);
+    const d = cx.getImageData(0, 0, 10, 10).data;
+    let n = 0, s = 0, s2 = 0;
+    for(let i = 0; i < d.length; i += 4){
+      const l = d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114;
+      s += l; s2 += l*l; n++;
+    }
+    const mean = s/n, sd = Math.sqrt(Math.max(0, s2/n - mean*mean));
+    if(mean > 232 && sd < 12) img.remove();
+  }catch(e){}
+}
+
+/* 榜单封面：真实封面走 /api/img 代理，失败就露出渐变+竖排书名 */
+function hotCover(it, size = 'sm'){
+  const cv = hotCleanCover(it && it.cover);
+  const src = cv
+    ? `<img src="${API_BASE}/api/img?u=${encodeURIComponent(cv)}&src=${esc(it.coverId || it.sourceId || '')}" alt="" loading="lazy" onload="hotImgOk(this)" onerror="this.remove()">`
+    : '';
+  return `<div class="cover ${size}" style="--c1:#243156;--c2:#6477C6">${src}<b>${esc(String(it && it.name || '').slice(0,4))}</b></div>`;
+}
+
 /* 阅读器主题 */
 const THEMES = {
   white:{bg:'#FBFAF6', fg:'#2B2B2B'},
@@ -1395,9 +1582,11 @@ window.__prevChapter = () => {
    ========================================================================== */
 routes.home = () => {
   const cat = S.rankCat || '总榜';
-  const cats = ['总榜','武侠','言情','悬疑','科幻','美食'];
-  const list = (cat==='总榜' ? allBooks() : allBooks().filter(b=>b.cat===cat))
-    .slice().sort((a,b)=>b.hot-a.hot).slice(0,6);
+  const cats = HOT_CATS;
+  const hot = (LIVE.hot && LIVE.hot.cat === cat) ? LIVE.hot : null;
+  const hItems = hot ? (hot.items || []).slice(0, 6) : [];
+  const hLoading = !!hot && hot.state === 'loading';
+  const hAt = hot && hot.at;
   const tab = S.homeTab || '发现';
   return `
   <div class="scroll">
@@ -1427,22 +1616,40 @@ routes.home = () => {
     <div class="pad">
       <div class="sect">
         <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>榜 单</h3>
-          <button class="more" data-act="home-tab" data-tab="热点">更多分类 ${ic('right','ico sm')}</button></div>
+          <button class="more" data-act="hot-refresh">${hAt ? hotAgo(hAt) + ' · 刷新' : '实时刷新'}</button></div>
         <div class="rank-tabs">
           ${cats.map(c=>`<button class="r ${cat===c?'on':''}" data-act="rank-cat" data-cat="${c}">${c}</button>`).join('')}
         </div>
         <div class="rank-grid">
-          ${list.map((b,i)=>`
-            <div class="rank-item" data-act="open-book" data-id="${b.id}">
+          ${hItems.length ? hItems.map((it,i)=>`
+            <div class="rank-item" data-act="open-hot" data-i="${i}">
               <span style="font-size:12px;font-weight:800;color:${i<3?'#FF6B3D':'#B9BFD0'};width:14px;padding-top:2px">${i+1}</span>
-              <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
+              ${hotCover(it,'sm')}
               <div class="meta">
-                <div class="nm">${esc(b.title)}</div>
-                <div class="au">${esc(b.author)} · ${esc(b.cat)}</div>
-                <span class="tag green" style="align-self:flex-start">原创</span>
+                <div class="nm">${esc(it.name)}</div>
+                <div class="au">${esc(it.author || '佚名')}</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span class="tag green">${it.count||1} 源可读</span>
+                </div>
               </div>
-            </div>`).join('')}
+            </div>`).join('')
+          : hLoading ? `
+            <div style="grid-column:1/-1">
+              <div class="skel" style="margin-bottom:10px"></div>
+              <div class="skel" style="margin-bottom:10px"></div>
+              <div class="skel"></div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:8px">正在把「${esc(cat)}」的候选书目逐本丢进书源检索 · 已完成 ${hot?hot.done:0}/${hot?hot.total:0}</div>
+            </div>`
+          : `
+            <div style="grid-column:1/-1;font-size:12px;color:var(--muted);line-height:1.75;padding:6px 2px">
+              ${LIVE.online === false
+                ? '书源服务没连上，榜单需要联网汇总。点右上角「刷新」重试，或去书源管理检查连接。'
+                : '这批书源里暂时没搜到候选书目，换个分类或点右上角「刷新」重试。'}
+            </div>`}
         </div>
+        ${hItems.length ? `<div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">
+          按书源收录量实时排序 · ${hot && hot.state==='loading' ? `仍在汇总 ${hot.done}/${hot.total}` : (hAt ? '更新于 '+hotAgo(hAt) : '实时')}
+        </div>` : ''}
       </div>
 
       <div class="sect">
@@ -1450,8 +1657,9 @@ routes.home = () => {
           <button class="more" data-act="tab" data-tab="community">去社区 ${ic('right','ico sm')}</button></div>
         <div class="topic-wrap">
           <div class="topic-chips">
-            ${['那些难忘的小说','必须推荐的一本小说','精准吐槽','相册里积攒一年的素材','书单共创'].map(t=>`
-              <button class="tp" data-act="tab" data-tab="community"><b>#</b>${t}</button>`).join('')}
+            ${(hItems.length ? hItems.slice(0,5).map(x=>x.name) : hotWords().slice(0,5)).map(t=>`
+              <button class="tp" data-act="quick-search" data-q="${esc(t)}"><b>#</b>${esc(t)}</button>`).join('')
+              || `<div style="font-size:11.5px;color:var(--muted);padding:4px 2px">榜单汇总完成后，这里会显示大家正在读的真实书名</div>`}
           </div>
         </div>
       </div>
@@ -1460,68 +1668,87 @@ routes.home = () => {
         <div class="sect-head">${ic('book','ico')}<h3>精选推荐</h3>
           <button class="more" data-act="home-tab" data-tab="书单">全部 ${ic('right','ico sm')}</button></div>
         <div class="rc-list">
-          ${allBooks().slice(0,4).map(b=>`
-          <div class="rc" data-act="open-book" data-id="${b.id}">
-            <div class="cover md" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
+          ${hItems.slice(0,4).map((it,i)=>`
+          <div class="rc" data-act="open-hot" data-i="${i}">
+            ${hotCover(it,'md')}
             <div class="info">
-              <div class="t">${esc(b.title)}</div>
-              <div class="d">${esc(b.intro)}</div>
-              <div class="foot"><span class="tag">${esc(b.cat)}</span><span class="tag green">可纯净阅读</span></div>
+              <div class="t">${esc(it.name)}</div>
+              <div class="d">${esc((it.intro || '这个书源没给简介，点开直接看目录').slice(0,60))}</div>
+              <div class="foot"><span class="tag">${esc((it.sourceName || '书源').slice(0,14))}</span><span class="tag green">${it.count||1} 个来源</span></div>
             </div>
-          </div>`).join('')}
+          </div>`).join('')
+          || (hLoading ? `<div class="skel"></div><div class="skel"></div>` : '')}
         </div>
       </div>
       <div class="spacer-b"></div>
     </div>` : tab==='热点' ? `
     <div class="pad">
       <div class="sect">
-        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>大家都在搜</h3></div>
+        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>大家都在搜</h3>
+          <button class="more" data-act="home-tab" data-tab="发现">去榜单 ${ic('right','ico sm')}</button></div>
         <div class="card" style="padding:6px 14px">
-          ${['剑照山河','长夜将明','春日迟','第九次日落','山海食单','归墟纪'].map((w,i)=>`
+          ${(()=>{ const w = hotWords(); return w.length ? w.map((k,i)=>`
           <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F4F6FB">
             <b style="width:16px;color:${i<3?'#FF6B3D':'#B9BFD0'};font-size:12px">${i+1}</b>
-            <button data-act="quick-search" data-q="${w}" style="flex:1;text-align:left;font-size:13.5px">${w}</button>
+            <button data-act="quick-search" data-q="${esc(k)}" style="flex:1;text-align:left;font-size:13.5px">${esc(k)}</button>
             <span class="tag ${i<3?'orange':''}">${i<3?'热':'新'}</span>
-          </div>`).join('')}
+          </div>`).join('')
+          : `<div style="padding:16px 2px;font-size:12px;color:var(--muted);line-height:1.75">还没有真实热词。<br>搜一本书，或等首页榜单汇总完成，这里会自动出现书名。</div>`; })()}
         </div>
       </div>
       <div class="sect">
-        <div class="sect-head">${ic('clock','ico')}<h3>最近更新</h3></div>
-        <div class="rc-list">
-          ${allBooks().map(b=>`
-          <div class="rc" data-act="open-book" data-id="${b.id}">
-            <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-            <div class="info">
-              <div class="t" style="font-size:13.5px">${esc(b.title)}</div>
-              <div class="d">更新至 ${esc(b.chapters[b.chapters.length-1].title)}</div>
+        <div class="sect-head">${ic('clock','ico')}<h3>分类实时榜</h3><span class="tag" style="margin-left:auto">来自书源</span></div>
+        ${HOT_CATS.filter(c => c !== '总榜').map(c => {
+          const m = hotAll()[c];
+          const its = (m && m.items) || [];
+          if(!its.length) return '';
+          return `<div class="card" style="padding:10px 14px;margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <button data-act="rank-cat" data-cat="${c}" style="font-size:13px;font-weight:800;color:var(--brand)">${c}榜</button>
+              <span style="font-size:11px;color:var(--muted)">${hotAgo(m.at)} · 点击切换分类</span>
             </div>
-            <div class="tag orange" style="align-self:center">${esc(b.cat)}</div>
-          </div>`).join('')}
-        </div>
+            ${its.slice(0,4).map((it,i)=>`
+            <div data-act="open-hot-cat" data-cat="${c}" data-i="${i}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
+              ${hotCover(it,'sm')}
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:700">${esc(it.name)}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(it.author||'佚名')} · ${it.count||1} 个书源收录</div>
+              </div>
+              ${ic('chev','ico sm')}
+            </div>`).join('')}
+          </div>`;
+        }).join('') || `<div class="card" style="padding:16px 14px;font-size:12px;color:var(--muted);line-height:1.75">
+          分类榜还没汇总。先回首页在「发现」里点各分类标签，或点上方「去榜单」。</div>`}
       </div>
       <div class="spacer-b"></div>
     </div>` : `
     <div class="pad">
-      ${[
-        {t:'适合通勤读完的短篇', d:'每本 5 章，一章一碗面', ids:['b1','b5','b3']},
-        {t:'深夜别点开的悬疑', d:'看完记得关灯', ids:['b2','b4']},
-        {t:'一卷江湖，一场旧梦', d:'武侠与玄幻的两种打开方式', ids:['b1','b6']}
-      ].map(g=>`
-      <div class="sect">
-        <div class="sect-head">${ic('list','ico')}<h3>${g.t}</h3><span class="tag" style="margin-left:auto">${g.ids.length} 本</span></div>
-        <div class="card" style="padding:12px 14px">
-          <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">${g.d}</div>
-          ${g.ids.map(id=>{const b=book(id);return `
-          <div data-act="open-book" data-id="${b.id}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
-            <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13.5px;font-weight:700">${esc(b.title)}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(b.author)} · ${esc(b.intro.slice(0,26))}…</div>
+      ${(()=>{
+        const m = hotAll();
+        const groups = HOT_CATS.filter(c => m[c] && m[c].items && m[c].items.length);
+        if(!groups.length) return `<div class="notice"><div class="nt">书单来自真实书源</div>
+          <div class="nd">先在首页「发现」里看榜，各分类汇总完成后，这里会自动生成对应的实时合集。</div>
+          <div class="nacts"><button class="btn ghost" data-act="home-tab" data-tab="发现">${ic('fire','ico sm')} 去首页看榜</button></div></div>`;
+        return groups.map(c => {
+          const its = m[c].items.slice(0, 4);
+          return `<div class="sect">
+            <div class="sect-head">${ic('list','ico')}<h3>${c} · 实时合集</h3>
+              <span class="tag" style="margin-left:auto">${its.length} 本 · ${hotAgo(m[c].at)}</span></div>
+            <div class="card" style="padding:12px 14px">
+              <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">按书源收录量排序，点任一本直接进详情读</div>
+              ${its.map((it,i)=>`
+              <div data-act="open-hot-cat" data-cat="${c}" data-i="${i}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
+                ${hotCover(it,'sm')}
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13.5px;font-weight:700">${esc(it.name)}</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(it.author||'佚名')} · ${it.count||1} 个来源 · ${esc((it.intro||'').slice(0,22))}${it.intro?'…':''}</div>
+                </div>
+                ${ic('chev','ico sm')}
+              </div>`).join('')}
             </div>
-            ${ic('chev','ico sm')}
-          </div>`}).join('')}
-        </div>
-      </div>`).join('')}
+          </div>`;
+        }).join('');
+      })()}
       <div class="spacer-b"></div>
     </div>`}
   </div>
@@ -2298,9 +2525,21 @@ function pickTxt(){
    ========================================================================== */
 const ACTIONS = {
   noop(){},
-  tab(el){ const k = el.dataset.tab; S.tab = k; S.view = k; save(); render(); },
+  tab(el){ const k = el.dataset.tab; S.tab = k; S.view = k; save(); render();
+    if(k === 'home' && (!LIVE.hot || LIVE.hot.cat !== (S.rankCat || '总榜'))) hotStart(S.rankCat || '总榜'); },
   'home-tab'(el){ S.homeTab = el.dataset.tab; save(); render(); },
-  'rank-cat'(el){ S.rankCat = el.dataset.cat; save(); render(); },
+  'rank-cat'(el){ S.rankCat = el.dataset.cat; save(); render(); hotStart(S.rankCat); },
+  'hot-refresh'(){ toast('正在向书源重新汇总榜单…'); hotStart(S.rankCat || '总榜', true); },
+  'open-hot'(el){
+    const it = (LIVE.hot && LIVE.hot.items || [])[Number(el.dataset.i)];
+    if(!it || !it.variants || !it.variants.length){ toast('这条榜单数据已过期，点「刷新」重来'); return; }
+    openRemote({ name:it.name, author:it.author, intro:it.intro, cover:it.cover, variants:it.variants }, 0);
+  },
+  'open-hot-cat'(el){
+    const it = hotItemAt(el.dataset.cat, Number(el.dataset.i));
+    if(!it || !it.variants || !it.variants.length){ toast('这条榜单数据已过期，去首页刷新一下'); return; }
+    openRemote({ name:it.name, author:it.author, intro:it.intro, cover:it.cover, variants:it.variants }, 0);
+  },
   'do-search'(){ doSearch(); },
   'quick-search'(el){ doSearch(el.dataset.q); },
   'go-home'(){ S.view = 'home'; save(); render(); },
@@ -2807,6 +3046,8 @@ window.addEventListener('beforeunload', ()=>{ save(); });
   if(!TABS.includes(S.view)) S.view = 'home';
   if(!TABS.includes(S.tab)) S.tab = S.view;
   render();
+  // 首页榜单：先用缓存渲染，再按需后台汇总（缓存 2 小时）
+  if(S.view === 'home') hotStart(S.rankCat || '总榜').then(() => { if(S.view === 'home') render(); });
   // 首次访问提示
   if(!Store.get()){
     setTimeout(()=>toast('欢迎使用愉阅 · 演示书库已就绪'), 600);
