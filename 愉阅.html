@@ -717,12 +717,16 @@ const THEMES = {
 function bookProgress(id){
   const p = S.progress[id]; const b = book(id);
   if(!p || !b) return null;
-  return ((p.ch + (p.ratio||0)) / b.chapters.length);
+  const total = (b.chapters||[]).length;
+  if(!total) return 0;
+  return ((p.ch + (p.ratio||0)) / total);
 }
 function progressText(id){
   const b = book(id); const p = S.progress[id];
   if(!p || !b) return '未开始';
-  const pct = Math.round(((p.ch + (p.ratio||0)) / b.chapters.length) * 100);
+  const total = (b.chapters||[]).length;
+  if(!total) return `读到第 ${p.ch+1} 章`;
+  const pct = Math.round(((p.ch + (p.ratio||0)) / total) * 100);
   return `读到 ${p.ch+1}/${b.chapters.length} 章 · ${Math.max(1,pct)}%`;
 }
 
