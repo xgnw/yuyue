@@ -879,7 +879,7 @@ function remoteBook(id){
         title:m.title, author:m.author||'', intro:m.intro||'', remoteCover:m.remoteCover||'',
         cover:['#2B3A67','#7C8FF0'], cat:'站外聚合', tags:[m.sourceName||'书源'],
         hot:0, variants:m.variants||[{sid:m.sourceId,url:m.bookUrl,source:m.sourceName}],
-        chapters:[], loading:true, fetchStarted:false, error:'' };
+        chapters:[], chapterCount:m.chapterCount||0, loading:true, fetchStarted:false, error:'' };
   LIVE.books.push(b);
   return b;
 }
@@ -892,6 +892,7 @@ function fetchRemoteToc(b, onDone){
   const v = (b.variants||[])[b.variantIdx||0] || {sid:b.sourceId, url:b.bookUrl};
   api(`/api/book?src=${v.sid}&url=${encodeURIComponent(v.url)}`).then(d => {
     b.chapters = (d.chapters||[]).map(c => ({ title:c.name, url:c.url, content:'' }));
+    b.chapterCount = b.chapters.length;
     if(d.name && (!b.title || b.title.length < 2)) b.title = d.name;
     b.author = d.author || b.author;
     b.intro = d.intro || b.intro;
@@ -900,7 +901,7 @@ function fetchRemoteToc(b, onDone){
     b.loading = false;
     if(!b.chapters.length) b.error = '这个书源没解析出目录，可以在详情页里「换源」重试';
     (S.rmMeta||{})[b.id] = Object.assign({}, S.rmMeta[b.id], { title:b.title, author:b.author,
-      intro:b.intro, remoteCover:b.remoteCover });
+      intro:b.intro, remoteCover:b.remoteCover, chapterCount:b.chapterCount||0 });
     save();
     onDone && onDone();
   }).catch(e => {
@@ -1275,13 +1276,20 @@ const THEMES = {
 function bookProgress(id){
   const p = S.progress[id]; const b = book(id);
   if(!p || !b) return null;
-  return ((p.ch + (p.ratio||0)) / b.chapters.length);
+  const total = chapterTotal(b);
+  if(!total) return 0;
+  return ((p.ch + (p.ratio||0)) / total);
+}
+function chapterTotal(b){
+  return (b && b.chapters && b.chapters.length) || (b && b.chapterCount) || 0;
 }
 function progressText(id){
   const b = book(id); const p = S.progress[id];
   if(!p || !b) return '未开始';
-  const pct = Math.round(((p.ch + (p.ratio||0)) / b.chapters.length) * 100);
-  return `读到 ${p.ch+1}/${b.chapters.length} 章 · ${Math.max(1,pct)}%`;
+  const total = chapterTotal(b);
+  if(!total) return `读到第 ${p.ch+1} 章`;
+  const pct = Math.round(((p.ch + (p.ratio||0)) / total) * 100);
+  return `读到 ${p.ch+1}/${total} 章 · ${Math.max(1,pct)}%`;
 }
 
 /* ------------------------- 5. 底部导航 ------------------------- */
@@ -1594,7 +1602,7 @@ window.__prevChapter = () => {
 };
 
 /* ==========================================================================
-   视图：首页（发现 / 热点 / 书单）
+   视图：首页（搜索 / 书架 / 搜索历史）
    ========================================================================== */
 routes.home = () => {
   const items = S.shelf.map(x => ({...x, b:book(x.id)})).filter(x=>x.b);
@@ -2694,7 +2702,7 @@ const ACTIONS = {
         S.rmMeta = S.rmMeta || {};
         S.rmMeta[id] = { sourceId:b.sourceId, sourceName:b.sourceName, bookUrl:b.bookUrl,
           title:b.title, author:b.author||'', intro:b.intro||'', remoteCover:b.remoteCover||'',
-          variants:b.variants||[] };
+          variants:b.variants||[], chapterCount:(b.chapters||[]).length || b.chapterCount || 0 };
       }
       S.shelf.unshift({id, group:'默认分组', addedAt:Date.now()}); toast('已加入书架');
     }
