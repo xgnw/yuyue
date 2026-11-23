@@ -209,6 +209,10 @@ body.dark .home-grid .add{background:#171A22;border-color:#2A3050}
 .topic-chips{display:flex;flex-wrap:wrap;gap:9px}
 .topic-chips .tp{padding:7px 11px;border-radius:9px;background:#F5F8FF;border:1px solid #E2E9FF;color:#3F4E7A;font-size:12px}
 .topic-chips .tp b{color:var(--brand);font-weight:800;margin-right:2px}
+.hchip{display:inline-flex;align-items:center;border-radius:9px;background:#F5F8FF;border:1px solid #E2E9FF;overflow:hidden}
+.hchip .tp{padding:7px 5px 7px 11px;background:none;border:none;border-radius:0}
+.hchip .x{padding:0 9px 0 0;color:#A9B0C6;font-size:13px;line-height:1;align-self:stretch;display:flex;align-items:center}
+.hchip .x:active{color:#E0402B}
 
 .rc-list{display:flex;flex-direction:column;gap:10px}
 .rc{display:flex;gap:12px;padding:12px;background:#fff;border-radius:16px;box-shadow:var(--shadow-sm)}
@@ -425,6 +429,13 @@ body.dark #dl-barwrap{background:#2A2F40}
 .shelf-tools{display:flex;align-items:center;gap:6px;margin-left:auto}
 .shelf-tools .icon-btn{background:#fff;border-radius:10px;box-shadow:var(--shadow-sm)}
 .shelf-sort{display:flex;gap:16px;padding:0 16px 8px;font-size:12px;color:var(--muted)}
+.bulk-bar{display:flex;align-items:center;gap:10px;margin:2px 16px 12px;padding:8px 12px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:12px;color:var(--muted)}
+.bulk-bar .all{color:var(--brand);font-weight:700}
+.bulk-bar .danger{margin-left:auto;height:30px;padding:0 14px;border-radius:8px;background:#FF4D4F;color:#fff;font-size:12px;font-weight:700}
+.bulk-bar .danger[disabled]{opacity:.45}
+.shelf-grid .it .pick{position:absolute;top:6px;right:6px;z-index:3;width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.92);border:1.5px solid #CBD3E8;display:grid;place-items:center;font-size:11px;color:transparent}
+.shelf-grid .it.sel .pick{background:var(--brand);border-color:var(--brand);color:#fff}
+.shelf-grid .it.sel .cover{outline:2px solid var(--brand);outline-offset:2px}
 .shelf-sort .s.on{color:var(--brand);font-weight:700}
 
 .shelf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 14px;padding:8px 16px 20px}
@@ -529,6 +540,8 @@ body.dark .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
 body.dark .rank-tabs .r{background:#1C2030;color:#A9B4D8}
 body.dark .rank-tabs .r.on{background:#262E4E;color:#CFD8FF;box-shadow:inset 0 0 0 1px #3A4A8A}
 body.dark .topic-chips .tp{background:#1A1E2C;border-color:#2A3048;color:#A9B4D8}
+body.dark .hchip{background:#1A1E2C;border-color:#2A3048}
+body.dark .hchip .x{color:#6E7794}
 body.dark .topic-chips .tp b{color:#7E96FF}
 body.dark .searchbar{box-shadow:none}
 body.dark .searchbar input::placeholder{color:#5E6780}
@@ -1291,6 +1304,10 @@ function progressText(id){
   const pct = Math.round(((p.ch + (p.ratio||0)) / total) * 100);
   return `读到 ${p.ch+1}/${total} 章 · ${Math.max(1,pct)}%`;
 }
+/* 搜索历史 chips：每个词右边带一个 ×，点了只删这条 */
+function searchChips(){
+  return (S.searchHistory||[]).map(h=>`<span class="hchip"><button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button><button class="x" data-act="del-search" data-q="${esc(h)}" title="删除这条">×</button></span>`).join('');
+}
 
 /* ------------------------- 5. 底部导航 ------------------------- */
 function tabbar(){
@@ -1659,7 +1676,7 @@ routes.home = () => {
         <div class="sect-head">${ic('clock','ico')}<h3>搜索历史</h3>
           ${hist.length ? `<button class="more" data-act="clear-history">清空</button>` : ''}</div>
         <div class="topic-chips">
-          ${hist.length ? hist.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('')
+          ${hist.length ? searchChips()
             : `<span class="muted" style="font-size:12px">还没有搜索记录，试试搜「剑来」「诡秘之主」</span>`}
         </div>
       </div>
@@ -1830,7 +1847,7 @@ routes.search = () => {
         <div class="sect-head">${ic('clock','ico')}<h3>搜索历史</h3>
           ${(S.searchHistory||[]).length?`<button class="more" data-act="clear-history">清空</button>`:''}</div>
         <div class="topic-chips">
-          ${(S.searchHistory||[]).length ? S.searchHistory.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('') :
+          ${(S.searchHistory||[]).length ? searchChips() :
             `<span class="muted" style="font-size:12px">还没有搜索记录，试试搜「剑来」「诡秘之主」「三体」</span>`}
         </div>
       </div>
@@ -1954,12 +1971,14 @@ routes.shelf = () => {
     return pb - pa;
   });
   const last = items.find(x=>S.progress[x.id]);
+  const picks = S.shelfPick || [];
+  const allPicked = items.length > 0 && items.every(x=>picks.includes(x.id));
   return `
   <div class="scroll">
     <div class="shelf-head">
       <h2>书架</h2>
       <div class="shelf-tools">
-        <button class="icon-btn" data-act="go-search" title="添加书籍">${ic('plus','ico')}</button>
+        ${S.shelfManage ? '' : `<button class="icon-btn" data-act="go-search" title="添加书籍">${ic('plus','ico')}</button>`}
         <button class="icon-btn" data-act="shelf-manage" title="${S.shelfManage?'完成':'管理'}">${S.shelfManage?ic('check','ico'):ic('more','ico')}</button>
         <button class="icon-btn" data-act="go-search" title="搜索">${ic('search','ico')}</button>
       </div>
@@ -1975,6 +1994,12 @@ routes.shelf = () => {
           <button class="btn line" style="height:38px" data-act="import-txt">导入 TXT</button>
         </div>
       </div>` : `
+      ${S.shelfManage ? `
+      <div class="bulk-bar">
+        <button class="all" data-act="shelf-pick-all">${allPicked?'取消全选':'全选'}</button>
+        <span>已选 ${picks.length} / ${items.length} 本</span>
+        <button class="danger" data-act="shelf-del-selected" ${picks.length?'':'disabled'}>移出书架</button>
+      </div>` : `
       ${last ? `<div class="continue" data-act="open-book" data-id="${last.id}">
         <div class="cover sm" style="--c1:${last.b.cover[0]};--c2:${last.b.cover[1]}"><b>${esc(last.b.title.slice(0,4))}</b></div>
         <div class="info">
@@ -1989,25 +2014,27 @@ routes.shelf = () => {
         <button class="s ${sort==='added'?'on':''}" data-act="shelf-sort" data-s="added">添加时间</button>
         <button class="s ${sort==='name'?'on':''}" data-act="shelf-sort" data-s="name">书名</button>
         <span style="margin-left:auto">共 ${items.length} 本</span>
-      </div>
+      </div>`}
 
       <div class="shelf-grid">
-        ${items.map(x=>`
-        <div class="it" data-act="${S.shelfManage?'shelf-del':'open-book'}" data-id="${x.id}">
+        ${items.map(x=>{
+          const on = picks.includes(x.id);
+          return `
+        <div class="it ${on?'sel':''}" data-act="${S.shelfManage?'shelf-pick':'open-book'}" data-id="${x.id}">
           <div class="cover" style="--c1:${x.b.cover[0]};--c2:${x.b.cover[1]}">
             <b>${esc(x.b.title.slice(0,6))}</b>
-            ${S.progress[x.id] && Date.now()-(S.progress[x.id].ts||0)<86400000?'<span class="newdot"></span>':''}
-            ${S.shelfManage?'<div style="position:absolute;inset:0;background:rgba(220,40,40,.55);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;z-index:2">移出 +</div>':''}
+            ${!S.shelfManage && S.progress[x.id] && Date.now()-(S.progress[x.id].ts||0)<86400000?'<span class="newdot"></span>':''}
+            ${S.shelfManage?`<span class="pick">${on?'✓':''}</span>`:''}
           </div>
           <div class="nm">${esc(x.b.title)}</div>
           <div class="pg">${progressText(x.id)}</div>
-        </div>`).join('')}
-        <div class="it" data-act="go-search">
+        </div>`}).join('')}
+        ${S.shelfManage ? '' : `<div class="it" data-act="go-search">
           <div class="cover" style="background:#fff;border:1.5px dashed #D6DDF0;box-shadow:none;display:grid;place-items:center">
             <div style="text-align:center;color:#9AA1B8;font-size:12px">${ic('plus','ico')}<div style="margin-top:6px">添加</div></div>
           </div>
           <div class="nm muted" style="font-weight:500">找书 / 导入</div>
-        </div>
+        </div>`}
       </div>
       <div class="spacer-b"></div>`}
   </div>
@@ -2051,7 +2078,7 @@ routes.history = () => {
     <div class="sect-head" style="margin-top:20px">${ic('search','ico')}<h3>搜索历史</h3>
       ${kw.length?`<button class="more" data-act="clear-history">清空</button>`:''}</div>
     <div class="topic-chips" style="padding:0 16px">
-      ${kw.length ? kw.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('') :
+      ${kw.length ? searchChips() :
         `<span class="muted" style="font-size:12px">还没有搜索记录</span>`}
     </div>
     <div class="spacer-b"></div>
@@ -2853,11 +2880,43 @@ const ACTIONS = {
   },
   'tts-rate-fast'(){ ACTIONS['tts-rate'](); },
   'shelf-sort'(el){ S.shelfSort = el.dataset.s; save(); render(); },
-  'shelf-manage'(){ S.shelfManage = !S.shelfManage; save(); render(); },
+  'shelf-manage'(){ S.shelfManage = !S.shelfManage; S.shelfPick = []; save(); render(); },
+  'shelf-pick'(el){
+    const id = el.dataset.id;
+    const a = S.shelfPick || [];
+    S.shelfPick = a.includes(id) ? a.filter(x=>x!==id) : a.concat(id);
+    save(); render();
+  },
+  'shelf-pick-all'(){
+    const ids = S.shelf.map(x=>x.id).filter(id=>book(id));
+    const a = S.shelfPick || [];
+    S.shelfPick = (ids.length && a.length === ids.length) ? [] : ids;
+    save(); render();
+  },
+  'shelf-del-selected'(){
+    const n = (S.shelfPick||[]).length;
+    if(!n){ toast('先选要移出的书'); return; }
+    modal(`<h4>移出书架</h4>
+      <p>将把 ${n} 本书移出书架。<br>阅读进度和浏览历史仍保留，随时可以再加回来。</p>
+      <div class="acts"><button class="btn line" data-act="close-modal">取消</button>
+      <button class="btn primary" data-act="shelf-del-selected-ok">移出 ${n} 本</button></div>`);
+  },
+  'shelf-del-selected-ok'(){
+    const pick = S.shelfPick || [];
+    S.shelf = S.shelf.filter(x=>!pick.includes(x.id));
+    S.shelfPick = [];
+    if(!S.shelf.length) S.shelfManage = false;
+    closeModal(); save(); render(); toast(`已移出 ${pick.length} 本`);
+  },
   'shelf-del'(el){
     S.shelf = S.shelf.filter(x=>x.id!==el.dataset.id);
     if(!S.shelf.length) S.shelfManage = false;
     save(); render(); toast('已移出书架');
+  },
+  'del-search'(el){
+    const q = el.dataset.q;
+    S.searchHistory = (S.searchHistory||[]).filter(x=>x!==q);
+    save(); render(); toast('已删除这条搜索记录');
   },
   'import-txt'(){ pickTxt(); },
   'source-toggle'(el){
