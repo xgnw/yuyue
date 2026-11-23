@@ -141,7 +141,7 @@ img{display:block}
    底部导航
    ========================================================================== */
 .tabbar{
-  position:relative;flex:none;display:grid;grid-template-columns:repeat(3,1fr);
+  position:relative;flex:none;display:grid;grid-template-columns:repeat(2,1fr);
   padding:6px 0 calc(6px + var(--safe-b));
   background:rgba(255,255,255,.94);backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
@@ -168,6 +168,18 @@ img{display:block}
 .searchbar input::placeholder{color:#A9B0C6}
 .searchbar .go{height:34px;padding:0 14px;border-radius:10px;background:linear-gradient(135deg,#3A5BFF,#274AFF);color:#fff;font-size:13px;font-weight:700}
 .searchbar .go:active{opacity:.85}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;padding:2px 0 0}
+.home-grid .it{display:flex;flex-direction:column;gap:7px}
+.home-grid .cover{width:100%;aspect-ratio:3/4;height:auto;border-radius:11px}
+.home-grid .cover b{font-size:14px}
+.home-grid .nm{font-size:12.5px;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.home-grid .pg{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-grid .add{width:100%;aspect-ratio:3/4;border-radius:11px;border:1.5px dashed #D6DDF0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#9AA1B8;font-size:12px}
+.home-empty{padding:18px 16px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.home-empty .he-t{font-size:14px;font-weight:800}
+.home-empty .he-d{font-size:11.5px;color:var(--muted);line-height:1.7}
+.home-empty .btn{height:34px;padding:0 16px;margin-top:2px}
+body.dark .home-grid .add{background:#171A22;border-color:#2A3050}
 
 .tabs{display:flex;gap:22px;padding:14px 2px 8px;font-size:15px;color:#7C8399;font-weight:600}
 .tabs .t{position:relative;padding:2px 0}
@@ -720,8 +732,7 @@ function tabbar(){
   const item = (k, ico, label) =>
     `<button class="tab ${t===k?'on':''}" data-act="tab" data-tab="${k}">${ic(ico,'ico')}<span>${label}</span></button>`;
   return `<nav class="tabbar">
-    ${item('home','search','搜索')}
-    ${item('shelf','book','书架')}
+    ${item('home','home','首页')}
     ${item('me','me','我的')}
   </nav>`;
 }
@@ -1064,11 +1075,10 @@ window.__prevChapter = () => {
    视图：首页（发现 / 热点 / 书单）
    ========================================================================== */
 routes.home = () => {
-  const cat = S.rankCat || '总榜';
-  const cats = ['总榜','武侠','言情','悬疑','科幻','美食'];
-  const list = (cat==='总榜' ? allBooks() : allBooks().filter(b=>b.cat===cat))
-    .slice().sort((a,b)=>b.hot-a.hot).slice(0,6);
-  const tab = S.homeTab || '发现';
+  const items = S.shelf.map(x => ({...x, b:book(x.id)})).filter(x=>x.b);
+  items.sort((a,b)=>((S.progress[b.id]||{}).ts||0)-((S.progress[a.id]||{}).ts||0));
+  const show = items.slice(0, 6);
+  const hist = S.searchHistory || [];
   return `
   <div class="scroll">
     <div class="home-head">
@@ -1085,117 +1095,50 @@ routes.home = () => {
       <div class="searchbar">
         ${ic('search','ico sm')}
         <input id="q" placeholder="搜书名、作者、关键词" enterkeyhint="search">
-        <button class="go" data-act="do-search">智能搜索</button>
-      </div>
-
-      <div class="tabs">
-        ${['发现','热点','书单'].map(t=>`<button class="t ${tab===t?'on':''}" data-act="home-tab" data-tab="${t}">${t}</button>`).join('')}
+        <button class="go" data-act="do-search">搜索</button>
       </div>
     </div>
 
-    ${tab==='发现' ? `
     <div class="pad">
       <div class="sect">
-        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>榜 单</h3>
-          <button class="more" data-act="home-tab" data-tab="热点">更多分类 ${ic('right','ico sm')}</button></div>
-        <div class="rank-tabs">
-          ${cats.map(c=>`<button class="r ${cat===c?'on':''}" data-act="rank-cat" data-cat="${c}">${c}</button>`).join('')}
-        </div>
-        <div class="rank-grid">
-          ${list.map((b,i)=>`
-            <div class="rank-item" data-act="open-book" data-id="${b.id}">
-              <span style="font-size:12px;font-weight:800;color:${i<3?'#FF6B3D':'#B9BFD0'};width:14px;padding-top:2px">${i+1}</span>
-              <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-              <div class="meta">
-                <div class="nm">${esc(b.title)}</div>
-                <div class="au">${esc(b.author)} · ${esc(b.cat)}</div>
-                <span class="tag green" style="align-self:flex-start">原创</span>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>
-
-      <div class="sect">
-        <div class="sect-head">${ic('fire','ico')}<h3>大家在读</h3></div>
-        <div class="topic-wrap">
-          <div class="topic-chips">
-            ${BOOKS.slice(0,5).map(b=>`
-              <button class="tp" data-act="quick-search" data-q="${esc(b.title)}"><b>#</b>${esc(b.title)}</button>`).join('')}
+        <div class="sect-head">${ic('book','ico')}<h3>书架</h3>
+          <button class="more" data-act="go-shelf">全部 ${ic('right','ico sm')}</button></div>
+        ${items.length ? `
+        <div class="home-grid">
+          ${show.map(x=>`
+          <div class="it" data-act="open-book" data-id="${x.id}">
+            <div class="cover" style="--c1:${x.b.cover[0]};--c2:${x.b.cover[1]}">
+              <b>${esc(x.b.title.slice(0,6))}</b>
+            </div>
+            <div class="nm">${esc(x.b.title)}</div>
+            <div class="pg">${progressText(x.id)}</div>
+          </div>`).join('')}
+          <div class="it" data-act="go-search">
+            <div class="add">${ic('plus','ico')}<span>找书</span></div>
+            <div class="nm muted" style="font-weight:500">添加</div>
           </div>
-        </div>
+        </div>` : `
+        <div class="card home-empty">
+          <div class="he-t">书架还是空的</div>
+          <div class="he-d">搜一本想看的书，详情页点「加入书架」就会出现在这里</div>
+          <button class="btn primary" data-act="go-search">去搜索</button>
+        </div>`}
       </div>
 
       <div class="sect">
-        <div class="sect-head">${ic('book','ico')}<h3>精选推荐</h3>
-          <button class="more" data-act="home-tab" data-tab="书单">全部 ${ic('right','ico sm')}</button></div>
-        <div class="rc-list">
-          ${allBooks().slice(0,4).map(b=>`
-          <div class="rc" data-act="open-book" data-id="${b.id}">
-            <div class="cover md" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-            <div class="info">
-              <div class="t">${esc(b.title)}</div>
-              <div class="d">${esc(b.intro)}</div>
-              <div class="foot"><span class="tag">${esc(b.cat)}</span><span class="tag green">可纯净阅读</span></div>
-            </div>
-          </div>`).join('')}
+        <div class="sect-head">${ic('clock','ico')}<h3>搜索历史</h3>
+          ${hist.length ? `<button class="more" data-act="clear-history">清空</button>` : ''}</div>
+        <div class="topic-chips">
+          ${hist.length ? hist.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('')
+            : `<span class="muted" style="font-size:12px">还没有搜索记录，试试搜「剑来」「诡秘之主」</span>`}
         </div>
       </div>
       <div class="spacer-b"></div>
-    </div>` : tab==='热点' ? `
-    <div class="pad">
-      <div class="sect">
-        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>大家都在搜</h3></div>
-        <div class="card" style="padding:6px 14px">
-          ${['剑照山河','长夜将明','春日迟','第九次日落','山海食单','归墟纪'].map((w,i)=>`
-          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F4F6FB">
-            <b style="width:16px;color:${i<3?'#FF6B3D':'#B9BFD0'};font-size:12px">${i+1}</b>
-            <button data-act="quick-search" data-q="${w}" style="flex:1;text-align:left;font-size:13.5px">${w}</button>
-            <span class="tag ${i<3?'orange':''}">${i<3?'热':'新'}</span>
-          </div>`).join('')}
-        </div>
-      </div>
-      <div class="sect">
-        <div class="sect-head">${ic('clock','ico')}<h3>最近更新</h3></div>
-        <div class="rc-list">
-          ${allBooks().map(b=>`
-          <div class="rc" data-act="open-book" data-id="${b.id}">
-            <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-            <div class="info">
-              <div class="t" style="font-size:13.5px">${esc(b.title)}</div>
-              <div class="d">更新至 ${esc(b.chapters[b.chapters.length-1].title)}</div>
-            </div>
-            <div class="tag orange" style="align-self:center">${esc(b.cat)}</div>
-          </div>`).join('')}
-        </div>
-      </div>
-      <div class="spacer-b"></div>
-    </div>` : `
-    <div class="pad">
-      ${[
-        {t:'适合通勤读完的短篇', d:'每本 5 章，一章一碗面', ids:['b1','b5','b3']},
-        {t:'深夜别点开的悬疑', d:'看完记得关灯', ids:['b2','b4']},
-        {t:'一卷江湖，一场旧梦', d:'武侠与玄幻的两种打开方式', ids:['b1','b6']}
-      ].map(g=>`
-      <div class="sect">
-        <div class="sect-head">${ic('list','ico')}<h3>${g.t}</h3><span class="tag" style="margin-left:auto">${g.ids.length} 本</span></div>
-        <div class="card" style="padding:12px 14px">
-          <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">${g.d}</div>
-          ${g.ids.map(id=>{const b=book(id);return `
-          <div data-act="open-book" data-id="${b.id}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
-            <div class="cover sm" style="--c1:${b.cover[0]};--c2:${b.cover[1]}"><b>${esc(b.title.slice(0,4))}</b></div>
-            <div style="flex:1;min-width:0">
-              <div style="font-size:13.5px;font-weight:700">${esc(b.title)}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(b.author)} · ${esc(b.intro.slice(0,26))}…</div>
-            </div>
-            ${ic('chev','ico sm')}
-          </div>`}).join('')}
-        </div>
-      </div>`).join('')}
-      <div class="spacer-b"></div>
-    </div>`}
+    </div>
   </div>
   ${tabbar()}`;
 };
+
 
 /* ==========================================================================
    视图：搜索结果（多书源聚合）
@@ -1843,6 +1786,7 @@ const ACTIONS = {
   'go-search'(){ S.view = 'search'; save(); render(); },
   'go-search-list'(){ S.query = ''; S.view = 'search'; save(); render(); },
   'go-history'(){ S.view = 'history'; save(); render(); },
+  'go-shelf'(){ S.view = 'shelf'; save(); render(); },
   'go-me'(){ S.view = 'me'; S.tab = 'me'; save(); render(); },
   'hist-read'(el){ openReader(el.dataset.id, Number(el.dataset.ch || 0)); },
   'clear-all-history'(){ S.history = []; save(); render(); toast('已清空浏览历史'); },
@@ -2063,8 +2007,8 @@ window.addEventListener('beforeunload', ()=>{ save(); });
    ========================================================================== */
 (function init(){
   applyFontPrefs();
-  // 冷启动只回到四个一级页面，避免直接落进阅读器/帖子等二级页
-  const TABS = ['home','shelf','me'];
+  // 冷启动只回到一级页面，避免直接落进阅读器等二级页
+  const TABS = ['home','me'];
   if(!TABS.includes(S.view)) S.view = 'home';
   if(!TABS.includes(S.tab)) S.tab = S.view;
   render();
