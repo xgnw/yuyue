@@ -143,7 +143,7 @@ img{display:block}
    底部导航
    ========================================================================== */
 .tabbar{
-  position:relative;flex:none;display:grid;grid-template-columns:repeat(3,1fr);
+  position:relative;flex:none;display:grid;grid-template-columns:repeat(2,1fr);
   padding:6px 0 calc(6px + var(--safe-b));
   background:rgba(255,255,255,.94);backdrop-filter:blur(18px);
   border-top:1px solid var(--line);
@@ -170,6 +170,18 @@ img{display:block}
 .searchbar input::placeholder{color:#A9B0C6}
 .searchbar .go{height:34px;padding:0 14px;border-radius:10px;background:linear-gradient(135deg,#3A5BFF,#274AFF);color:#fff;font-size:13px;font-weight:700}
 .searchbar .go:active{opacity:.85}
+.home-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px 14px;padding:2px 0 0}
+.home-grid .it{display:flex;flex-direction:column;gap:7px}
+.home-grid .cover{width:100%;aspect-ratio:3/4;height:auto;border-radius:11px}
+.home-grid .cover b{font-size:14px}
+.home-grid .nm{font-size:12.5px;font-weight:700;line-height:1.4;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.home-grid .pg{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-grid .add{width:100%;aspect-ratio:3/4;border-radius:11px;border:1.5px dashed #D6DDF0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#9AA1B8;font-size:12px}
+.home-empty{padding:18px 16px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.home-empty .he-t{font-size:14px;font-weight:800}
+.home-empty .he-d{font-size:11.5px;color:var(--muted);line-height:1.7}
+.home-empty .btn{height:34px;padding:0 16px;margin-top:2px}
+body.dark .home-grid .add{background:#171A22;border-color:#2A3050}
 
 .tabs{display:flex;gap:22px;padding:14px 2px 8px;font-size:15px;color:#7C8399;font-weight:600}
 .tabs .t{position:relative;padding:2px 0}
@@ -502,10 +514,8 @@ body.dark #dl-barwrap{background:#2A2F40}
 body.dark{--bg:#0E1016;--card:#171A22;--text:#EDEFF7;--sub:#A7AEC4;--muted:#727A92;--line:#242836;--brand-soft:#232A44;--shadow:0 8px 24px rgba(0,0,0,.3);--shadow-sm:0 2px 10px rgba(0,0,0,.25)}
 body.dark .bar,body.dark .tabbar{background:rgba(14,16,22,.85)}
 body.dark .searchbar{background:#171A22;border-color:#2A3050}
-body.dark .post-body{color:#C3C9DB}
-body.dark .post-topic{background:#232A44;color:#A9B6E8}
-body.dark .rc,body.dark .res-card,body.dark .intro-card,body.dark .catalog,body.dark .post,body.dark .me-list,body.dark .topic-wrap{background:var(--card)}
-body.dark .shelf-tools .icon-btn,body.dark .com-head .icon-btn{background:#171A22}
+body.dark .rc,body.dark .res-card,body.dark .intro-card,body.dark .catalog,body.dark .me-list,body.dark .topic-wrap{background:var(--card)}
+body.dark .shelf-tools .icon-btn{background:#171A22}
 body.dark .sheet{background:#171A22}
 body.dark .stepper,body.dark .tts-bar{background:#222635}
 body.dark .sheet .grab{background:#2A2F40}
@@ -1280,8 +1290,7 @@ function tabbar(){
   const item = (k, ico, label) =>
     `<button class="tab ${t===k?'on':''}" data-act="tab" data-tab="${k}">${ic(ico,'ico')}<span>${label}</span></button>`;
   return `<nav class="tabbar">
-    ${item('home','search','搜索')}
-    ${item('shelf','book','书架')}
+    ${item('home','home','首页')}
     ${item('me','me','我的')}
   </nav>`;
 }
@@ -1588,13 +1597,10 @@ window.__prevChapter = () => {
    视图：首页（发现 / 热点 / 书单）
    ========================================================================== */
 routes.home = () => {
-  const cat = S.rankCat || '总榜';
-  const cats = HOT_CATS;
-  const hot = (LIVE.hot && LIVE.hot.cat === cat) ? LIVE.hot : null;
-  const hItems = hot ? (hot.items || []).slice(0, 6) : [];
-  const hLoading = !!hot && hot.state === 'loading';
-  const hAt = hot && hot.at;
-  const tab = S.homeTab || '发现';
+  const items = S.shelf.map(x => ({...x, b:book(x.id)})).filter(x=>x.b);
+  items.sort((a,b)=>((S.progress[b.id]||{}).ts||0)-((S.progress[a.id]||{}).ts||0));
+  const show = items.slice(0, 6);
+  const hist = S.searchHistory || [];
   return `
   <div class="scroll">
     <div class="home-head">
@@ -1611,152 +1617,46 @@ routes.home = () => {
       <div class="searchbar">
         ${ic('search','ico sm')}
         <input id="q" placeholder="搜书名、作者、关键词" enterkeyhint="search">
-        <button class="go" data-act="do-search">智能搜索</button>
-      </div>
-
-      <div class="tabs">
-        ${['发现','热点','书单'].map(t=>`<button class="t ${tab===t?'on':''}" data-act="home-tab" data-tab="${t}">${t}</button>`).join('')}
+        <button class="go" data-act="do-search">搜索</button>
       </div>
     </div>
 
-    ${tab==='发现' ? `
     <div class="pad">
       <div class="sect">
-        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>榜 单</h3>
-          <button class="more" data-act="hot-refresh">${hAt ? hotAgo(hAt) + ' · 刷新' : '实时刷新'}</button></div>
-        <div class="rank-tabs">
-          ${cats.map(c=>`<button class="r ${cat===c?'on':''}" data-act="rank-cat" data-cat="${c}">${c}</button>`).join('')}
-        </div>
-        <div class="rank-grid">
-          ${hItems.length ? hItems.map((it,i)=>`
-            <div class="rank-item" data-act="open-hot" data-i="${i}">
-              <span style="font-size:12px;font-weight:800;color:${i<3?'#FF6B3D':'#B9BFD0'};width:14px;padding-top:2px">${i+1}</span>
-              ${hotCover(it,'sm')}
-              <div class="meta">
-                <div class="nm">${esc(it.name)}</div>
-                <div class="au">${esc(it.author || '佚名')}</div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  <span class="tag green">${it.count||1} 源可读</span>
-                </div>
-              </div>
-            </div>`).join('')
-          : hLoading ? `
-            <div style="grid-column:1/-1">
-              <div class="skel" style="margin-bottom:10px"></div>
-              <div class="skel" style="margin-bottom:10px"></div>
-              <div class="skel"></div>
-              <div style="font-size:11.5px;color:var(--muted);margin-top:8px">正在把「${esc(cat)}」的候选书目逐本丢进书源检索 · 已完成 ${hot?hot.done:0}/${hot?hot.total:0}</div>
-            </div>`
-          : `
-            <div style="grid-column:1/-1;font-size:12px;color:var(--muted);line-height:1.75;padding:6px 2px">
-              ${LIVE.online === false
-                ? '书源服务没连上，榜单需要联网汇总。点右上角「刷新」重试，或去书源管理检查连接。'
-                : '这批书源里暂时没搜到候选书目，换个分类或点右上角「刷新」重试。'}
-            </div>`}
-        </div>
-        ${hItems.length ? `<div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">
-          按书源收录量实时排序 · ${hot && hot.state==='loading' ? `仍在汇总 ${hot.done}/${hot.total}` : (hAt ? '更新于 '+hotAgo(hAt) : '实时')}
-        </div>` : ''}
-      </div>
-
-      <div class="sect">
-        <div class="sect-head">${ic('fire','ico')}<h3>大家在读</h3></div>
-        <div class="topic-wrap">
-          <div class="topic-chips">
-            ${(hItems.length ? hItems.slice(0,5).map(x=>x.name) : hotWords().slice(0,5)).map(t=>`
-              <button class="tp" data-act="quick-search" data-q="${esc(t)}"><b>#</b>${esc(t)}</button>`).join('')
-              || `<div style="font-size:11.5px;color:var(--muted);padding:4px 2px">榜单汇总完成后，这里会显示大家正在读的真实书名</div>`}
+        <div class="sect-head">${ic('book','ico')}<h3>书架</h3>
+          <button class="more" data-act="go-shelf">全部 ${ic('right','ico sm')}</button></div>
+        ${items.length ? `
+        <div class="home-grid">
+          ${show.map(x=>`
+          <div class="it" data-act="open-book" data-id="${x.id}">
+            <div class="cover" style="--c1:${x.b.cover[0]};--c2:${x.b.cover[1]}">
+              <b>${esc(x.b.title.slice(0,6))}</b>
+            </div>
+            <div class="nm">${esc(x.b.title)}</div>
+            <div class="pg">${progressText(x.id)}</div>
+          </div>`).join('')}
+          <div class="it" data-act="go-search">
+            <div class="add">${ic('plus','ico')}<span>找书</span></div>
+            <div class="nm muted" style="font-weight:500">添加</div>
           </div>
-        </div>
+        </div>` : `
+        <div class="card home-empty">
+          <div class="he-t">书架还是空的</div>
+          <div class="he-d">搜一本想看的书，详情页点「加入书架」就会出现在这里</div>
+          <button class="btn primary" data-act="go-search">去搜索</button>
+        </div>`}
       </div>
 
       <div class="sect">
-        <div class="sect-head">${ic('book','ico')}<h3>精选推荐</h3>
-          <button class="more" data-act="home-tab" data-tab="书单">全部 ${ic('right','ico sm')}</button></div>
-        <div class="rc-list">
-          ${hItems.slice(0,4).map((it,i)=>`
-          <div class="rc" data-act="open-hot" data-i="${i}">
-            ${hotCover(it,'md')}
-            <div class="info">
-              <div class="t">${esc(it.name)}</div>
-              <div class="d">${esc((it.intro || '这个书源没给简介，点开直接看目录').slice(0,60))}</div>
-              <div class="foot"><span class="tag">${esc((it.sourceName || '书源').slice(0,14))}</span><span class="tag green">${it.count||1} 个来源</span></div>
-            </div>
-          </div>`).join('')
-          || (hLoading ? `<div class="skel"></div><div class="skel"></div>` : '')}
+        <div class="sect-head">${ic('clock','ico')}<h3>搜索历史</h3>
+          ${hist.length ? `<button class="more" data-act="clear-history">清空</button>` : ''}</div>
+        <div class="topic-chips">
+          ${hist.length ? hist.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('')
+            : `<span class="muted" style="font-size:12px">还没有搜索记录，试试搜「剑来」「诡秘之主」</span>`}
         </div>
       </div>
       <div class="spacer-b"></div>
-    </div>` : tab==='热点' ? `
-    <div class="pad">
-      <div class="sect">
-        <div class="sect-head"><span style="font-size:17px;line-height:1">🔥</span><h3>大家都在搜</h3>
-          <button class="more" data-act="home-tab" data-tab="发现">去榜单 ${ic('right','ico sm')}</button></div>
-        <div class="card" style="padding:6px 14px">
-          ${(()=>{ const w = hotWords(); return w.length ? w.map((k,i)=>`
-          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #F4F6FB">
-            <b style="width:16px;color:${i<3?'#FF6B3D':'#B9BFD0'};font-size:12px">${i+1}</b>
-            <button data-act="quick-search" data-q="${esc(k)}" style="flex:1;text-align:left;font-size:13.5px">${esc(k)}</button>
-            <span class="tag ${i<3?'orange':''}">${i<3?'热':'新'}</span>
-          </div>`).join('')
-          : `<div style="padding:16px 2px;font-size:12px;color:var(--muted);line-height:1.75">还没有真实热词。<br>搜一本书，或等首页榜单汇总完成，这里会自动出现书名。</div>`; })()}
-        </div>
-      </div>
-      <div class="sect">
-        <div class="sect-head">${ic('clock','ico')}<h3>分类实时榜</h3><span class="tag" style="margin-left:auto">来自书源</span></div>
-        ${HOT_CATS.filter(c => c !== '总榜').map(c => {
-          const m = hotAll()[c];
-          const its = (m && m.items) || [];
-          if(!its.length) return '';
-          return `<div class="card" style="padding:10px 14px;margin-bottom:12px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-              <button data-act="rank-cat" data-cat="${c}" style="font-size:13px;font-weight:800;color:var(--brand)">${c}榜</button>
-              <span style="font-size:11px;color:var(--muted)">${hotAgo(m.at)} · 点击切换分类</span>
-            </div>
-            ${its.slice(0,4).map((it,i)=>`
-            <div data-act="open-hot-cat" data-cat="${c}" data-i="${i}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
-              ${hotCover(it,'sm')}
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13.5px;font-weight:700">${esc(it.name)}</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(it.author||'佚名')} · ${it.count||1} 个书源收录</div>
-              </div>
-              ${ic('chev','ico sm')}
-            </div>`).join('')}
-          </div>`;
-        }).join('') || `<div class="card" style="padding:16px 14px;font-size:12px;color:var(--muted);line-height:1.75">
-          分类榜还没汇总。先回首页在「发现」里点各分类标签，或点上方「去榜单」。</div>`}
-      </div>
-      <div class="spacer-b"></div>
-    </div>` : `
-    <div class="pad">
-      ${(()=>{
-        const m = hotAll();
-        const groups = HOT_CATS.filter(c => m[c] && m[c].items && m[c].items.length);
-        if(!groups.length) return `<div class="notice"><div class="nt">书单来自真实书源</div>
-          <div class="nd">先在首页「发现」里看榜，各分类汇总完成后，这里会自动生成对应的实时合集。</div>
-          <div class="nacts"><button class="btn ghost" data-act="home-tab" data-tab="发现">${ic('fire','ico sm')} 去首页看榜</button></div></div>`;
-        return groups.map(c => {
-          const its = m[c].items.slice(0, 4);
-          return `<div class="sect">
-            <div class="sect-head">${ic('list','ico')}<h3>${c} · 实时合集</h3>
-              <span class="tag" style="margin-left:auto">${its.length} 本 · ${hotAgo(m[c].at)}</span></div>
-            <div class="card" style="padding:12px 14px">
-              <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">按书源收录量排序，点任一本直接进详情读</div>
-              ${its.map((it,i)=>`
-              <div data-act="open-hot-cat" data-cat="${c}" data-i="${i}" style="display:flex;gap:11px;padding:8px 0;align-items:center">
-                ${hotCover(it,'sm')}
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:13.5px;font-weight:700">${esc(it.name)}</div>
-                  <div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(it.author||'佚名')} · ${it.count||1} 个来源 · ${esc((it.intro||'').slice(0,22))}${it.intro?'…':''}</div>
-                </div>
-                ${ic('chev','ico sm')}
-              </div>`).join('')}
-            </div>
-          </div>`;
-        }).join('');
-      })()}
-      <div class="spacer-b"></div>
-    </div>`}
+    </div>
   </div>
   ${tabbar()}`;
 };
@@ -1810,7 +1710,6 @@ function buildResults(q){
   });
   return {list:out, bookCount:hits.length, fuzzy, similar, rights: rightsKey ? {title:rightsKey, author:RIGHTS_BOOKS[rightsKey]} : null};
 }
-
 routes.search = () => {
   const q = S.query || '';
   const st = LIVE.search;
@@ -1936,6 +1835,8 @@ routes.search = () => {
     <div class="spacer-b"></div>
   </div>`;
 };
+
+/* ==========================================================================
 
 /* ==========================================================================
    视图：书籍详情
@@ -2523,8 +2424,7 @@ function pickTxt(){
    ========================================================================== */
 const ACTIONS = {
   noop(){},
-  tab(el){ const k = el.dataset.tab; S.tab = k; S.view = k; save(); render();
-    if(k === 'home' && (!LIVE.hot || LIVE.hot.cat !== (S.rankCat || '总榜'))) hotStart(S.rankCat || '总榜'); },
+  tab(el){ const k = el.dataset.tab; S.tab = k; S.view = k; save(); render(); },
   'home-tab'(el){ S.homeTab = el.dataset.tab; save(); render(); },
   'rank-cat'(el){ S.rankCat = el.dataset.cat; save(); render(); hotStart(S.rankCat); },
   'hot-refresh'(){ toast('正在向书源重新汇总榜单…'); hotStart(S.rankCat || '总榜', true); },
@@ -2544,6 +2444,7 @@ const ACTIONS = {
   'go-search'(){ S.view = 'search'; save(); render(); },
   'go-search-list'(){ S.query = ''; S.view = 'search'; save(); render(); },
   'go-history'(){ S.view = 'history'; save(); render(); },
+  'go-shelf'(){ S.view = 'shelf'; save(); render(); },
   'go-me'(){ S.view = 'me'; S.tab = 'me'; save(); render(); },
   'hist-read'(el){ openReader(el.dataset.id, Number(el.dataset.ch || 0)); },
   'clear-all-history'(){ S.history = []; save(); render(); toast('已清空浏览历史'); },
@@ -3028,13 +2929,11 @@ window.addEventListener('beforeunload', ()=>{ save(); });
     if(v){ render(); if(S.view === 'search' && S.query) liveSearch(S.query); }
   });
   applyFontPrefs();
-  // 冷启动只回到三个一级页面，避免直接落进阅读器等二级页
-  const TABS = ['home','shelf','me'];
+  // 冷启动只回到一级页面，避免直接落进阅读器等二级页
+  const TABS = ['home','me'];
   if(!TABS.includes(S.view)) S.view = 'home';
   if(!TABS.includes(S.tab)) S.tab = S.view;
   render();
-  // 首页榜单：先用缓存渲染，再按需后台汇总（缓存 2 小时）
-  if(S.view === 'home') hotStart(S.rankCat || '总榜').then(() => { if(S.view === 'home') render(); });
   // 首次访问提示
   if(!Store.get()){
     setTimeout(()=>toast('欢迎使用愉阅 · 演示书库已就绪'), 600);
