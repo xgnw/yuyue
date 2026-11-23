@@ -864,6 +864,8 @@ routes.reader = () => {
     <div class="reader-head" id="rd-head">
       <button class="icon-btn" data-act="close-reader">${ic('back','ico')}</button>
       <div class="tt">${esc(b.title)}</div>
+      <button class="icon-btn" data-act="prev-ch" title="上一章" ${ch<=0?'disabled style="opacity:.3"':''}><span style="display:inline-flex;transform:scaleX(-1)">${ic('chev','ico')}</span></button>
+      <button class="icon-btn" data-act="next-ch" title="下一章" ${ch>=b.chapters.length-1?'disabled style="opacity:.3"':''}>${ic('chev','ico')}</button>
       <button class="icon-btn" data-act="open-catalog">${ic('list','ico')}</button>
     </div>
 
@@ -934,7 +936,7 @@ routes.reader = () => {
     <div class="sheet" id="sheet-catalog" style="height:74%">
       <div class="grab"></div>
       <h3>目录 · 共 ${b.chapters.length} 章 <button class="close" data-act="close-catalog">关闭</button></h3>
-      <div style="max-height:calc(74vh - 84px);overflow-y:auto">
+      <div id="cat-list" style="max-height:calc(74vh - 84px);overflow-y:auto">
         ${b.chapters.map((x,i)=>`
         <div class="ch" data-act="jump-ch" data-ch="${i}" style="display:flex;align-items:center;gap:8px;padding:12px 2px;border-bottom:1px solid #F4F6FB;font-size:13px;color:${i===ch?'#274AFF':'#3A4159'};font-weight:${i===ch?'800':'500'}">
           <span style="min-width:22px;color:#C6CCDD;font-size:11px">${String(i+1).padStart(2,'0')}</span>
@@ -1051,20 +1053,33 @@ function ttsSpeakFrom(i){
 function openReader(bookId, ch){
   const b = book(bookId);
   if(!b) return;
+  const fromCatalog = ch != null;
+  const i = fromCatalog ? ch : ((S.progress[bookId]||{}).ch || 0);
   S.bookId = bookId;
-  S.reader = {bookId, ch: ch ?? ((S.progress[bookId]||{}).ch || 0), pure:S.settings.pure, tts:false};
+  S.reader = {bookId, ch:i, pure:S.settings.pure, tts:false};
+  if(fromCatalog){
+    // 从目录/章节列表点进来：直接定位到这一章开头，别被上次的滚动比例拉回旧位置
+    window.__rdJump = i;
+    S.progress[bookId] = { ch:i, ratio:0, ts:Date.now() };
+  }
   S.view = 'reader';
   save(); render();
 }
 window.__nextChapter = () => {
   const b = book(S.bookId); const r = S.reader||{};
   if(r.ch < b.chapters.length-1){
-    ttsStop(); r.ch++; window.__rdJump = r.ch; save(); render();
+    ttsStop(); r.ch++; window.__rdJump = r.ch;
+    S.progress[S.bookId] = { ch:r.ch, ratio:0, ts:Date.now() };
+    save(); render();
   } else toast('已经是最后一章了');
 };
 window.__prevChapter = () => {
   const r = S.reader||{};
-  if(r.ch>0){ ttsStop(); r.ch--; window.__rdJump = r.ch; save(); render(); }
+  if(r.ch>0){
+    ttsStop(); r.ch--; window.__rdJump = r.ch;
+    S.progress[S.bookId] = { ch:r.ch, ratio:0, ts:Date.now() };
+    save(); render();
+  }
   else toast('已经是第一章了');
 };
 
@@ -1886,7 +1901,20 @@ const ACTIONS = {
   'share-book'(){ navigator.clipboard?.writeText(location.href).catch(()=>{}); toast('分享链接已复制'); },
   'toggle-intro'(){ S.introOpen = !S.introOpen; save(); render(); },
   'open-catalog'(){
-    if(S.view === 'reader'){ openSheet('catalog'); }
+    if(S.view === 'reader'){
+      openSheet('catalog');
+      // 打开目录时直接滚到「正在读」的那一章，不用自己往下翻
+      requestAnimationFrame(()=>{
+        const list = $('#cat-list'); if(!list) return;
+        const cur = (S.reader || {}).ch || 0;
+        const it = list.querySelector(`[data-act="jump-ch"][data-ch="${cur}"]`);
+        if(!it) return;
+        const r = it.getBoundingClientRect(), lr = list.getBoundingClientRect();
+        if(r.top < lr.top || r.bottom > lr.bottom){
+          list.scrollTop += (r.top - lr.top) - Math.min(120, list.clientHeight * 0.3);
+        }
+      });
+    }
     else { S.view = 'catalog'; save(); render(); }
   },
   'close-catalog'(){ closeSheet('catalog'); },
@@ -1913,7 +1941,14 @@ const ACTIONS = {
   },
   'prev-ch'(){ window.__prevChapter(); },
   'next-ch'(){ window.__nextChapter(); },
-  'jump-ch'(el){ ttsStop(); S.reader.ch = Number(el.dataset.ch); save(); render(); },
+  'jump-ch'(el){
+    ttsStop();
+    const i = Number(el.dataset.ch);
+    S.reader.ch = i;
+    window.__rdJump = i;                       // 让阅读器 hook 把这一章滚到顶部
+    S.progress[S.bookId] = { ch:i, ratio:0, ts:Date.now() };
+    save(); render();
+  },
   'set-theme'(el){
     S.settings.theme = el.dataset.th; save();
     if(S.view === 'reader'){
