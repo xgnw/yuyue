@@ -391,6 +391,17 @@ body.dark .notice .nd{color:#A7AEC4}
 .continue .s{font-size:11px;color:#66719A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .continue .btn{height:34px;padding:0 14px;border-radius:10px;font-size:12px}
 
+/* 阅读足迹（浏览历史 / 搜索历史） */
+.hist-list{background:var(--card);border-radius:16px;padding:2px 14px;margin:0 16px;box-shadow:var(--shadow-sm)}
+.hist-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.hist-row:last-child{border-bottom:0}
+.hist-row .cv{width:44px;height:58px;border-radius:8px;flex:none;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+.hist-row .info{flex:1;min-width:0}
+.hist-row .t{font-size:13.5px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-row .s{font-size:11.5px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-row .btn{height:30px;padding:0 12px;border-radius:9px;font-size:12px;flex:none}
+.hist-empty{margin:0 16px;padding:16px;border-radius:16px;background:var(--card);color:var(--muted);font-size:12px;text-align:center;box-shadow:var(--shadow-sm)}
+
 /* ==========================================================================
    社区
    ========================================================================== */
@@ -688,6 +699,7 @@ function defaultState(){
     readSeconds:0,
     settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1 },
     searchHistory:[],
+    history:[],                    // 浏览历史 [{id, ch, ts}]
     posts: JSON.parse(JSON.stringify(SEED_POSTS))
   };
 }
@@ -710,6 +722,26 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<'
 const book = id => BOOKS.find(b => b.id === id) || (S.localBooks||[]).find(b => b.id === id);
 const allBooks = () => BOOKS.concat(S.localBooks||[]);
 const inShelf = id => S.shelf.some(x => x.id === id);
+/* 浏览历史：打开书/读正文都记一笔，最近读的排前面 */
+function pushHistory(id, ch){
+  if(!id) return;
+  const old = (S.history||[]).find(x=>x.id===id);
+  const c = ch != null ? ch : (old ? old.ch : ((S.progress[id]||{}).ch || 0));
+  S.history = [{id, ch:c, ts:Date.now()}, ...(S.history||[]).filter(x=>x.id!==id)].slice(0,60);
+}
+function touchHistory(id, ch){
+  const e = (S.history||[]).find(x=>x.id===id);
+  if(e){ e.ch = ch; e.ts = Date.now(); }
+  else pushHistory(id, ch);
+  if(S.history.length > 60) S.history.length = 60;
+}
+function histAgo(ts){
+  const d = Date.now() - (ts||0);
+  if(d < 60e3) return '刚刚';
+  if(d < 3600e3) return Math.floor(d/60e3) + ' 分钟前';
+  if(d < 86400e3) return Math.floor(d/3600e3) + ' 小时前';
+  return Math.floor(d/86400e3) + ' 天前';
+}
 const shelfGroups = () => ['默认分组', ...new Set(S.shelf.map(x=>x.group).filter(g=>g!=='默认分组'))];
 const fmtNum = n => n >= 10000 ? (n/10000).toFixed(1)+'w' : String(n);
 const nowTime = () => { const d=new Date(); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -977,7 +1009,7 @@ hook('reader', () => {
     // 快滑到章末：直接把下一章接上来
     if(max - body.scrollTop < 420) rdAppendNext();
     clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(save, 400);
+    scrollTimer = setTimeout(()=>{ touchHistory(S.bookId, cur); save(); }, 400);
   };
   body.addEventListener('scroll', update, {passive:true});
   update();
@@ -1063,6 +1095,7 @@ function openReader(bookId, ch){
     S.progress[bookId] = { ch:i, ratio:0, ts:Date.now() };
   }
   S.view = 'reader';
+  pushHistory(bookId, i);
   save(); render();
 }
 window.__nextChapter = () => {
@@ -1439,6 +1472,7 @@ routes.shelf = () => {
     <div class="shelf-head">
       <h2>书架</h2>
       <div class="shelf-tools">
+        <button class="icon-btn" data-act="go-search" title="添加书籍">${ic('plus','ico')}</button>
         <button class="icon-btn" data-act="shelf-manage" title="${S.shelfManage?'完成':'管理'}">${S.shelfManage?ic('check','ico'):ic('more','ico')}</button>
         <button class="icon-btn" data-act="go-search" title="搜索">${ic('search','ico')}</button>
       </div>
@@ -1491,6 +1525,46 @@ routes.shelf = () => {
       <div class="spacer-b"></div>`}
   </div>
   ${tabbar()}`;
+};
+
+/* ==========================================================================
+   视图：阅读足迹（浏览历史 + 搜索历史）
+   ========================================================================== */
+routes.history = () => {
+  const list = (S.history||[]).map(h => ({...h, b:book(h.id)})).filter(x=>x.b);
+  const kw = S.searchHistory||[];
+  return `
+  <div class="bar solid">
+    <button class="icon-btn" data-act="go-me">${ic('back','ico')}</button>
+    <div class="title">阅读足迹</div>
+    <button class="icon-btn" data-act="clear-all-history" title="清空足迹">${ic('trash','ico')}</button>
+  </div>
+  <div class="scroll pad">
+    <div class="sect-head">${ic('clock','ico')}<h3>浏览历史</h3>
+      <span class="libmeta" style="margin-left:auto">${list.length} 本</span></div>
+    ${list.length ? `<div class="hist-list">
+      ${list.map(x=>{
+        const total = (x.b.chapters||[]).length;
+        const sub = total ? `读到 ${Math.min(total, x.ch+1)}/${total} 章` : '目录待加载';
+        return `<div class="hist-row" data-act="open-book" data-id="${x.id}">
+          <div class="cv" style="background:linear-gradient(150deg,${x.b.cover[0]},${x.b.cover[1]})">${esc(x.b.title.slice(0,3))}</div>
+          <div class="info">
+            <div class="t">${esc(x.b.title)}</div>
+            <div class="s">${sub} · ${histAgo(x.ts)}</div>
+          </div>
+          <button class="btn ghost" data-act="hist-read" data-id="${x.id}" data-ch="${x.ch}">继续</button>
+        </div>`;
+      }).join('')}
+    </div>` : `<div class="hist-empty">还没有浏览记录，去首页挑一本，或者搜一个书名</div>`}
+
+    <div class="sect-head" style="margin-top:20px">${ic('search','ico')}<h3>搜索历史</h3>
+      ${kw.length?`<button class="more" data-act="clear-history">清空</button>`:''}</div>
+    <div class="topic-chips" style="padding:0 16px">
+      ${kw.length ? kw.map(h=>`<button class="tp" data-act="quick-search" data-q="${esc(h)}">${esc(h)}</button>`).join('') :
+        `<span class="muted" style="font-size:12px">还没有搜索记录</span>`}
+    </div>
+    <div class="spacer-b"></div>
+  </div>`;
 };
 
 /* ==========================================================================
@@ -1572,6 +1646,7 @@ routes.post = () => {
    ========================================================================== */
 routes.me = () => {
   const mins = Math.round(S.readSeconds/60);
+  const hist = (S.history||[]).map(h=>({...h, b:book(h.id)})).filter(x=>x.b);
   return `
   <div class="scroll">
     <div class="me-hero">
@@ -1587,6 +1662,24 @@ routes.me = () => {
         <div><b>${mins}</b><span>阅读分钟</span></div>
         <div><b>${S.shelf.length}</b><span>书架藏书</span></div>
         <div><b>${S.shelf.filter(x=>S.progress[x.id]).length}</b><span>已读本数</span></div>
+      </div>
+    </div>
+
+    <div class="me-list">
+      <div class="me-row" data-act="go-history">
+        <div class="ic">${ic('clock','ico')}</div>
+        <div class="tx"><div>浏览历史</div><div class="s">${hist.length?`${hist.length} 本 · 最近《${esc(hist[0].b.title)}》`:'还没有浏览记录'}</div></div>
+        <span class="chev">${ic('chev','ico sm')}</span>
+      </div>
+      <div class="me-row" data-act="go-search-list">
+        <div class="ic">${ic('search','ico')}</div>
+        <div class="tx"><div>搜索历史</div><div class="s">${(S.searchHistory||[]).length?esc(S.searchHistory.slice(0,3).join('、')):'还没有搜索记录'}</div></div>
+        <span class="chev">${ic('chev','ico sm')}</span>
+      </div>
+      <div class="me-row" data-act="tab" data-tab="shelf">
+        <div class="ic">${ic('book','ico')}</div>
+        <div class="tx"><div>我的书架</div><div class="s">${S.shelf.length} 本 · 去书架页管理</div></div>
+        <span class="chev">${ic('chev','ico sm')}</span>
       </div>
     </div>
 
@@ -1802,7 +1895,9 @@ function closeSheet(name){
    交互：业务动作
    ========================================================================== */
 function openBook(id){
-  S.bookId = id; S.view = 'book'; S.introOpen = false; save(); render();
+  S.bookId = id; S.view = 'book'; S.introOpen = false;
+  pushHistory(id);
+  save(); render();
   const sc = $('#screen .scroll'); if(sc) sc.scrollTop = 0;
 }
 function doSearch(q){
@@ -1877,6 +1972,11 @@ const ACTIONS = {
   'quick-search'(el){ doSearch(el.dataset.q); },
   'go-home'(){ S.view = 'home'; save(); render(); },
   'go-search'(){ S.view = 'search'; save(); render(); },
+  'go-search-list'(){ S.query = ''; S.view = 'search'; save(); render(); },
+  'go-history'(){ S.view = 'history'; save(); render(); },
+  'go-me'(){ S.view = 'me'; S.tab = 'me'; save(); render(); },
+  'hist-read'(el){ openReader(el.dataset.id, Number(el.dataset.ch || 0)); },
+  'clear-all-history'(){ S.history = []; save(); render(); toast('已清空浏览历史'); },
   'clear-history'(){ S.searchHistory = []; save(); render(); toast('已清空搜索历史'); },
   'open-book'(el){ openBook(el.dataset.id); },
   'open-result'(el){
@@ -1947,6 +2047,7 @@ const ACTIONS = {
     S.reader.ch = i;
     window.__rdJump = i;                       // 让阅读器 hook 把这一章滚到顶部
     S.progress[S.bookId] = { ch:i, ratio:0, ts:Date.now() };
+    touchHistory(S.bookId, i);
     save(); render();
   },
   'set-theme'(el){
