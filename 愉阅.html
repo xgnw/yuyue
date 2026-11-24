@@ -1197,6 +1197,7 @@ function tidyArticleTitle(t, site){
   s = s.replace(/^【[^】]{1,12}】\s*/,'');
   if(!s) return '';
   s = s.replace(/^.*?目录\s+(?=第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷])/,'');
+  s = s.replace(/\s*[（(]?\s*第\s*[0-9０-９]+\s*页\s*[）)]?\s*$/,'');
   const parts = s.split(/\s+[-–—_|]\s+/);
   if(parts.length > 1){
     const tail = parts[parts.length-1];
@@ -1274,7 +1275,7 @@ function extractArticle(html, pageUrl, extra){
   const docTitle = txt(doc.querySelector('title'));
   const ogBook = meta('meta[property="og:novel:book_name"]') || meta('meta[name="og:novel:book_name"]');
   const ogChapter = meta('meta[property="og:novel:chapter_name"]') || meta('meta[name="og:novel:chapter_name"]');
-  const chapterNode = doc.querySelector('.zhangj, #mlfy_main_text h3, #chapterTitle, .chapter-title, .chapter_name, .chapterTitle, h1.chapter-title, .bookname h3');
+  const chapterNode = doc.querySelector('.zhangj, #mlfy_main_text h3, #chapterTitle, .chapter-title, .chapter_name, .chapterTitle, h1.chapter-title, .bookname h3, #chaptername, .chaptername, h1.chaptername');
   const chapterGuess = txt(chapterNode);
   const CHAPTER_RE = /第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷]/;
   let pathName = '';
@@ -1356,6 +1357,14 @@ function extractArticle(html, pageUrl, extra){
       || findNav(/^(下一章|下一頁|下章|next(?:\s*chapter)?)$/i);
     prevUrl = meta('meta[property="og:novel:prev_chapter_url"]') || meta('meta[name="og:novel:prev_chapter_url"]')
       || findNav(/^(上一章|上一頁|上章|prev(?:\s*chapter)?)$/i);
+    if(!nextUrl){
+      const m = String(html).match(/(?:var\s+)?(?:hhekgv|next_page|nextpage|next_url|nextUrl|next_chapter)\s*=\s*['"]([^'"]{2,300})['"]/i);
+      if(m) nextUrl = abs(m[1].replace(/&amp;/g,'&'));
+    }
+    if(!prevUrl){
+      const m = String(html).match(/(?:var\s+)?(?:lhhekgv|prev_page|prevpage|prev_url|prevUrl|prev_chapter)\s*=\s*['"]([^'"]{2,300})['"]/i);
+      if(m) prevUrl = abs(m[1].replace(/&amp;/g,'&'));
+    }
     catalogUrl = findNav(/^(目录|目录页|返回目录|章节目录|回目录|返回书目|作品目录)$/);
   }
 
@@ -1372,7 +1381,7 @@ function extractArticle(html, pageUrl, extra){
 
   const cands = [];
   const BASE_SELS = ['article','[role="main"]','main','#js_content','.rich_media_content','.article-content','.entry-content','.post-content','.markdown-body','.article-body','.post','.article','.detail-content','.news-content'];
-  const CH_SELS = ['#mlfy_main_text .read-content','.read-content','#chaptercontent','#content','#booktxt','#txtContent','.showtxt','.chapter-content','#articlecontent','.novel-content','#booktext','.text-content','#read-content','.yd_text2','.content_read','#contentall','.content_detail'];
+  const CH_SELS = ['#mlfy_main_text .read-content','.read-content','#chaptercontent','#content','#booktxt','#txtContent','.showtxt','.chapter-content','#articlecontent','.novel-content','#booktext','.text-content','#read-content','.yd_text2','.content_read','#contentall','.content_detail','#txt','.txt'];
   const SELS = (chapterMode ? CH_SELS.concat(BASE_SELS) : BASE_SELS.concat(['.content','#content'])).join(',');
   doc.querySelectorAll(SELS).forEach(el => {
     const t = String(el.textContent||'').replace(/\s+/g,' ').trim();
@@ -1393,8 +1402,8 @@ function extractArticle(html, pageUrl, extra){
   /* 正文按块重排：段落 / 小标题 / 引用 / 列表 / 图片，其他标签只取文字 */
   const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
   const BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','LI','PRE','FIGCAPTION','DD','DT']);
-  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏|.+?\s*[-–—]\s*(小说|文学|阅读|读书|书库)$)/;
-  const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址|上一页|下一页|上一章|下一章|返回目录|目录页|章节目录)/i;
+  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|存书签|加入书签|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏|请退出浏览器阅读模式|退出浏览器阅读模式|.+?\s*[-–—]\s*(小说|文学|阅读|读书|书库)$)/;
+  const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址|上一页|下一页|上一章|下一章|返回目录|目录页|章节目录|请退出浏览器|阅读模式)/i;
   const blocks = [], seenImg = new Set();
   const clean = t => String(t||'').replace(/\u00a0/g,' ').replace(/\r/g,'')
     .split('\n').map(x => x.replace(/\s+/g,' ').trim()).filter(Boolean);
