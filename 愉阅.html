@@ -1116,8 +1116,8 @@ function extractArticle(html, pageUrl, extra){
   let pathName = '';
   try{ pathName = new URL(finalUrl).pathname; }catch(e){}
   const chapterMode = !!ogChapter ||
-    (CHAPTER_RE.test(chapterGuess) && (!!ogBook || /\/read\/|\/chapter|read_|\/book\/|\/\d+\.html?$/i.test(pathName))) ||
-    (CHAPTER_RE.test(docTitle) && /\/read\/|\/chapter|read_|\/book\//i.test(pathName));
+    (CHAPTER_RE.test(chapterGuess) && (!!ogBook || /\/read\/|\/chapter|read_|\/book\/|\/\d+\.s?html?$/i.test(pathName))) ||
+    (CHAPTER_RE.test(docTitle) && /\/read\/|\/chapter|read_|\/book\/|\/\d+\.s?html?$/i.test(pathName));
   const siteMeta = txt(doc.querySelector('meta[property="og:site_name"]')) || meta('meta[property="og:site_name"]');
   const siteSuffix = (() => {
     const parts = (docTitle || extra.title || '').split(/\s+[-–—_|]\s+/);
@@ -1140,6 +1140,7 @@ function extractArticle(html, pageUrl, extra){
       const cand = dtParts.find(x => x !== title && x !== site && x !== siteRaw && !CHAPTER_RE.test(x) && x.length <= 30);
       bookTitle = (cand || '').split(/\s+[-–—_|]\s+/)[0].trim().slice(0, 60);
     }
+    bookTitle = bookTitle.replace(/[（(][^）)]{1,10}[）)].*$/, '').replace(/\s+/g, ' ').trim().slice(0, 60);
   } else {
     title = h1 || extra.title || meta('meta[property="og:title"]') || docTitle || (ld && ld.headline) || '';
     title = tidyArticleTitle(title, site);
@@ -1223,17 +1224,18 @@ function extractArticle(html, pageUrl, extra){
   /* 正文按块重排：段落 / 小标题 / 引用 / 列表 / 图片，其他标签只取文字 */
   const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
   const BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','LI','PRE','FIGCAPTION','DD','DT']);
-  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏)/;
+  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏|.+?\s*[-–—]\s*(小说|文学|阅读|读书|书库)$)/;
   const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址)/i;
   const blocks = [], seenImg = new Set();
   const clean = t => String(t||'').replace(/\u00a0/g,' ').replace(/\r/g,'')
-    .split('\n').map(x => x.replace(/[ \t\f\v]+/g,' ').trim()).filter(Boolean);
+    .split('\n').map(x => x.replace(/\s+/g,' ').trim()).filter(Boolean);
 
   function addText(raw, tag){
     clean(raw).forEach(line => {
       if(line.length < 2 && !/^[0-9一二三四五六七八九十]/.test(line)) return;
       if(line === title && tag !== 'H2' && tag !== 'H3') return;
       if(chapterMode && (line === bookTitle || line === author || line === site)) return;
+      if(chapterMode && site && line !== title && line.includes(site) && line.length <= 40) return;
       if(chapterMode && line.length < 110 && PROMO.test(line)) return;
       if(JUNK.test(line) && line.length < 42) return;
       if(/^https?:\/\/\S+$/.test(line) && line.length < 90) return;
