@@ -1042,7 +1042,7 @@ function rdChapterHTML(b, i, r){
 }
 function rdTailText(){
   const b = book(S.bookId); if(!b) return '';
-  if(b.article) return '已到文章末尾';
+  if(b.article) return b.kind === 'chapter' ? '已到章节末尾' : '已到文章末尾';
   const last = rdRT.loaded.length ? rdRT.loaded[rdRT.loaded.length-1] : 0;
   if(rdRT.loading) return '正在加载下一章…';
   return last+1 < b.chapters.length ? '继续下滑，自动接下一章' : '已是最后一章';
@@ -1434,6 +1434,7 @@ routes.reader = () => {
   const r = S.reader || (S.reader = {bookId:b.id, ch:0, pure:S.settings.pure, tts:false});
   const ch = Math.min(Math.max(0, r.ch||0), b.chapters.length-1);
   const c = b.chapters[ch];
+  const headTitle = (b.kind === 'chapter' && b.bookTitle) ? b.bookTitle : b.title;
   const th = THEMES[S.settings.theme] || THEMES.white;
   // 当前章不在已拼接的章节里（首次进入 / 目录跳章 / 上一章下一章）→ 重置连续阅读栈
   if(rdRT.bookId !== b.id || !rdRT.loaded.includes(ch)){
@@ -1446,7 +1447,7 @@ routes.reader = () => {
     <div class="reader-dim"></div>
     <div class="reader-head" id="rd-head">
       <button class="icon-btn" data-act="close-reader">${ic('back','ico')}</button>
-      <div class="tt">${esc(b.title)}</div>
+      <div class="tt">${esc(headTitle)}</div>
       ${art ? `<button class="icon-btn" data-act="open-original-article" title="打开原文">${ic('link','ico')}</button>` : `
       <button class="icon-btn" data-act="prev-ch" title="上一章" ${ch<=0?'disabled style="opacity:.3"':''}><span style="display:inline-flex;transform:scaleX(-1)">${ic('chev','ico')}</span></button>
       <button class="icon-btn" data-act="next-ch" title="下一章" ${ch>=b.chapters.length-1?'disabled style="opacity:.3"':''}>${ic('chev','ico')}</button>
@@ -1467,7 +1468,7 @@ routes.reader = () => {
     </div>
 
     <div class="reader-foot" id="rd-foot">
-      <span class="${art?'art-src':''}">${art ? esc(b.source||'网页文章') : `${ch+1}/${b.chapters.length}`}</span>
+      <span class="${art?'art-src':''}">${art ? (b.kind==='chapter' ? '网页章节' : '网页文章') : `${ch+1}/${b.chapters.length}`}</span>
       <div class="progress"><i id="rd-prog"></i></div>
       <span id="rd-pct">${art ? '0%' : pct+'%'}</span>
     </div>
@@ -1633,25 +1634,58 @@ function extractArticle(html, pageUrl, extra){
 
   /* 元信息要在清洗前取，清洗会把站点头部一起删掉 */
   const docTitle = txt(doc.querySelector('title'));
+  const ogBook = meta('meta[property="og:novel:book_name"]') || meta('meta[name="og:novel:book_name"]');
+  const ogChapter = meta('meta[property="og:novel:chapter_name"]') || meta('meta[name="og:novel:chapter_name"]');
+  const chapterNode = doc.querySelector('.zhangj, #mlfy_main_text h3, #chapterTitle, .chapter-title, .chapter_name, .chapterTitle, h1.chapter-title, .bookname h3');
+  const chapterGuess = txt(chapterNode);
+  const CHAPTER_RE = /第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷]/;
+  let pathName = '';
+  try{ pathName = new URL(finalUrl).pathname; }catch(e){}
+  const chapterMode = !!ogChapter ||
+    (CHAPTER_RE.test(chapterGuess) && (!!ogBook || /\/read\/|\/chapter|read_|\/book\/|\/\d+\.html?$/i.test(pathName))) ||
+    (CHAPTER_RE.test(docTitle) && /\/read\/|\/chapter|read_|\/book\//i.test(pathName));
   const siteMeta = txt(doc.querySelector('meta[property="og:site_name"]')) || meta('meta[property="og:site_name"]');
   const siteSuffix = (() => {
     const parts = (docTitle || extra.title || '').split(/\s+[-–—_|]\s+/);
     return parts.length > 1 ? parts[parts.length-1].trim() : '';
   })();
-  const siteRaw = siteMeta || ldPublisher || (siteSuffix.length <= 26 ? siteSuffix : '');
+  const titleParts = (docTitle || extra.title || '').split(/\s*(?:_|｜|\||—|–)\s*/).map(x => x.trim()).filter(Boolean);
+  const siteRaw = siteMeta || ldPublisher || (siteSuffix.length <= 26 ? siteSuffix : '')
+    || (chapterMode && titleParts.length > 1 ? titleParts[titleParts.length-1].slice(0, 26) : '');
   const site = siteRaw.split(/\s+[-–—_|]\s+/)[0] || '';
   const h1 = txt(doc.querySelector('h1'));
-  let title = h1 || extra.title || meta('meta[property="og:title"]') || docTitle || (ld && ld.headline) || '';
-  title = tidyArticleTitle(title, site);
-  if(!title) title = '未命名文章';
-  let author = extra.author || meta('meta[name="author"]') || meta('meta[property="article:author"]')
-    || (((ldAuthor && ldAuthor !== siteRaw && !siteRaw.includes(ldAuthor)) ? ldAuthor : ''))
-    || txt(doc.querySelector('[rel="author"], .vcard, .author, #js_name, .post-author, .entry-author'))
-    || ldAuthor;
+  let title = '', bookTitle = '';
+  if(chapterMode){
+    const dtParts = (docTitle || extra.title || '').split(/\s*(?:_|｜|\||—|–|-)\s*/).map(x => x.trim()).filter(Boolean);
+    const ct = ogChapter || chapterGuess || dtParts.find(x => CHAPTER_RE.test(x)) || '';
+    title = tidyArticleTitle(ct, site);
+    if(!title) title = tidyArticleTitle(docTitle, site) || '网页章节';
+    bookTitle = String(ogBook || (h1 && !CHAPTER_RE.test(h1) && h1 !== chapterGuess ? h1 : '') || '')
+      .replace(/\s+/g,' ').trim().slice(0, 60);
+    if(!bookTitle){
+      const cand = dtParts.find(x => x !== title && x !== site && x !== siteRaw && !CHAPTER_RE.test(x) && x.length <= 30);
+      bookTitle = (cand || '').split(/\s+[-–—_|]\s+/)[0].trim().slice(0, 60);
+    }
+  } else {
+    title = h1 || extra.title || meta('meta[property="og:title"]') || docTitle || (ld && ld.headline) || '';
+    title = tidyArticleTitle(title, site);
+    if(!title) title = '未命名文章';
+  }
+  let author = '';
+  if(chapterMode){
+    author = meta('meta[property="og:novel:author"]') || meta('meta[name="og:novel:author"]')
+      || txt(doc.querySelector('#mlfy_main_text .info .fl, .bookinfo .author, .book-author, .author-info, [rel="author"]'))
+      || extra.author || '';
+  } else {
+    author = extra.author || meta('meta[name="author"]') || meta('meta[property="article:author"]')
+      || (((ldAuthor && ldAuthor !== siteRaw && !siteRaw.includes(ldAuthor)) ? ldAuthor : ''))
+      || txt(doc.querySelector('[rel="author"], .vcard, .author, #js_name, .post-author, .entry-author'))
+      || ldAuthor;
+  }
   author = String(author||'').replace(/^\s*(作者|文|撰文|来源)\s*[:：]\s*/,'').replace(/\s+/g,' ').trim().slice(0, 40);
   const metaBlock = txt(doc.querySelector('.asset-meta, .entry-meta, .article-meta, .post-meta, .byline, .info'));
   const dateGuess = (metaBlock.match(/(?:20\d{2})\s*[年\-/.]\s*\d{1,2}\s*[月\-/.]\s*\d{1,2}/) || [])[0] || '';
-  const published = fmtArticleDate(
+  const published = chapterMode ? '' : fmtArticleDate(
     meta('meta[property="article:published_time"]') || meta('meta[name="pubdate"]') || meta('meta[name="publishdate"]')
     || (ld && (ld.datePublished || ld.dateCreated)) || ''
     || (doc.querySelector('time[datetime]') ? doc.querySelector('time[datetime]').getAttribute('datetime') : '')
@@ -1664,6 +1698,22 @@ function extractArticle(html, pageUrl, extra){
   try{ host = new URL(finalUrl).hostname.replace(/^www\./,''); }catch(e){}
   const source = site || host || '网页';
   if(author && siteRaw && author.replace(/\s+/g,'').toLowerCase() === siteRaw.replace(/\s+/g,'').toLowerCase()) author = '';
+  let nextUrl = '', prevUrl = '', catalogUrl = '';
+  if(chapterMode){
+    const findNav = re => {
+      for(const a of doc.querySelectorAll('a[href]')){
+        const t = txt(a), href = a.getAttribute('href') || '';
+        if(!href || /^(javascript:|#)/i.test(href)) continue;
+        if(re.test(t)) return abs(href);
+      }
+      return '';
+    };
+    nextUrl = meta('meta[property="og:novel:next_chapter_url"]') || meta('meta[name="og:novel:next_chapter_url"]')
+      || findNav(/^(下一章|下一頁|下章|next(?:\s*chapter)?)$/i);
+    prevUrl = meta('meta[property="og:novel:prev_chapter_url"]') || meta('meta[name="og:novel:prev_chapter_url"]')
+      || findNav(/^(上一章|上一頁|上章|prev(?:\s*chapter)?)$/i);
+    catalogUrl = findNav(/^(目录|返回目录|章节目录|回目录)$/);
+  }
 
   /* 去掉脚本、表单、导航、页脚、广告位和推荐位 */
   const BAD = /(^|[\s_-])(ad|ads|advert|banner|sponsor|promo|share|social|comment|footer|header|nav|menu|sidebar|side|related|recommend|toolbar|breadcrumb|login|subscribe|paywall|qrcode|download|float|popup|modal|reward|praise)([\s_-]|$)/i;
@@ -1674,16 +1724,22 @@ function extractArticle(html, pageUrl, extra){
     const sig = tag + ' ' + (n.id || '');
     if(BAD.test(sig)) n.remove();
   });
+  if(chapterMode) doc.querySelectorAll('#center_tip,.book-mark,#mlfy_main_text .info,#mlfy_main_text .zhangj,.chapter-tip,.read-tip,.txtnav,.chapter-nav,.chapter-operate').forEach(n => n.remove());
 
   const cands = [];
-  const SELS = ['article','[role="main"]','main','#js_content','.rich_media_content','.article-content','.entry-content','.post-content','.markdown-body','.article-body','.content','#content','.post','.article','.detail-content','.news-content'];
-  doc.querySelectorAll(SELS.join(',')).forEach(el => {
+  const BASE_SELS = ['article','[role="main"]','main','#js_content','.rich_media_content','.article-content','.entry-content','.post-content','.markdown-body','.article-body','.post','.article','.detail-content','.news-content'];
+  const CH_SELS = ['#mlfy_main_text .read-content','.read-content','#chaptercontent','#content','#booktxt','#txtContent','.showtxt','.chapter-content','#articlecontent','.novel-content','#booktext','.text-content','#read-content','.yd_text2','.content_read','#contentall','.content_detail'];
+  const SELS = (chapterMode ? CH_SELS.concat(BASE_SELS) : BASE_SELS.concat(['.content','#content'])).join(',');
+  doc.querySelectorAll(SELS).forEach(el => {
     const t = String(el.textContent||'').replace(/\s+/g,' ').trim();
     if(t.length < 80) return;
-    let score = t.length + el.querySelectorAll('p').length * 30;
-    if(el.tagName === 'ARTICLE') score += 600;
     const sig = ((el.className && el.className.baseVal != null ? el.className.baseVal : el.className) || '') + ' ' + (el.id || '');
+    const linkLen = Array.from(el.querySelectorAll('a')).reduce((n,a) => n + String(a.textContent||'').trim().length, 0);
+    let score = t.length + el.querySelectorAll('p').length * 30 - linkLen * 2;
+    if(el.tagName === 'ARTICLE') score += 600;
     if(/article|content|post|entry|rich_media|markdown|main|detail|news/i.test(sig)) score += 300;
+    if(chapterMode && /read-content|chapter|booktxt|txtcontent|showtxt|content_read|mlfy|articlecontent|novel/i.test(sig)) score += 700;
+    if(linkLen > t.length * 0.25) score -= 500;
     cands.push({ el, score });
   });
   cands.sort((a,b) => b.score - a.score);
@@ -1693,7 +1749,8 @@ function extractArticle(html, pageUrl, extra){
   /* 正文按块重排：段落 / 小标题 / 引用 / 列表 / 图片，其他标签只取文字 */
   const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
   const BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','LI','PRE','FIGCAPTION','DD','DT']);
-  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|返回|目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：])/;
+  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏)/;
+  const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址)/i;
   const blocks = [], seenImg = new Set();
   const clean = t => String(t||'').replace(/\u00a0/g,' ').replace(/\r/g,'')
     .split('\n').map(x => x.replace(/[ \t\f\v]+/g,' ').trim()).filter(Boolean);
@@ -1702,6 +1759,8 @@ function extractArticle(html, pageUrl, extra){
     clean(raw).forEach(line => {
       if(line.length < 2 && !/^[0-9一二三四五六七八九十]/.test(line)) return;
       if(line === title && tag !== 'H2' && tag !== 'H3') return;
+      if(chapterMode && (line === bookTitle || line === author || line === site)) return;
+      if(chapterMode && line.length < 110 && PROMO.test(line)) return;
       if(JUNK.test(line) && line.length < 42) return;
       if(/^https?:\/\/\S+$/.test(line) && line.length < 90) return;
       if(line.length > 4000) line = line.slice(0, 4000);
@@ -1756,7 +1815,7 @@ function extractArticle(html, pageUrl, extra){
   if(!plainBlocks.length) throw new Error('没有识别到正文，可能是登录墙、反爬页面或视频页');
   let content = plainBlocks.map(b => b.t).join('\n\n');
   if(content.length > 180000) content = content.slice(0, 180000);
-  if(content.length < 180) throw new Error('正文太短（' + content.length + ' 字），这个页面可能不是文章');
+  if(content.length < 180) throw new Error('正文太短（' + content.length + ' 字），这个页面可能不是文章或小说章节');
 
   const htmlOut = blocks.map(b => {
     if(b.img) return `<figure><img src="${esc(b.img)}" alt="${esc(b.alt||'')}" loading="lazy" referrerpolicy="no-referrer"></figure>`;
@@ -1772,6 +1831,11 @@ function extractArticle(html, pageUrl, extra){
 
   return {
     title, author, source, published, desc,
+    kind: chapterMode ? 'chapter' : 'article',
+    bookTitle: chapterMode ? bookTitle : '',
+    nextUrl: chapterMode ? nextUrl : '',
+    prevUrl: chapterMode ? prevUrl : '',
+    catalogUrl: chapterMode ? catalogUrl : '',
     content, html: htmlOut,
     finalUrl, blocks: blocks.length,
     chars: content.replace(/\s/g,'').length,
@@ -1826,12 +1890,16 @@ async function loadArticle(url){
     const src = await fetchArticleSource(cu);
     const art = extractArticle(src.html, src.finalUrl || cu, src);
     const id = articleId(cu);
+    const isCh = art.kind === 'chapter';
     const item = {
-      id, title:art.title, author:art.author || art.source || '网页文章', cat:'网页文章',
-      tags:['网页','净化'], cover:articleCover(id), hot:0,
+      id, title:art.title, author:art.author || (isCh ? '' : art.source || '网页文章'),
+      cat:isCh ? '网页章节' : '网页文章',
+      tags:isCh ? ['网页','章节','净化'] : ['网页','净化'], cover:articleCover(id), hot:0,
       intro:(art.desc || art.content.slice(0, 100)).slice(0, 160),
       chapters:[{ title:art.title, content:art.content, html:art.html }],
-      article:true, url:cu, source:art.source, published:art.published,
+      article:true, kind:art.kind, bookTitle:art.bookTitle || '',
+      nextUrl:art.nextUrl || '', prevUrl:art.prevUrl || '', catalogUrl:art.catalogUrl || '',
+      url:cu, source:art.source, published:art.published,
       chars:art.chars, readMin:art.readMin, via:src.via, fetchedAt:Date.now()
     };
     S.articles = [item, ...(S.articles||[]).filter(a => a.id !== id)].slice(0, 8);
@@ -1839,7 +1907,7 @@ async function loadArticle(url){
     save();
     sessionStorage.setItem('openReaderFrom','home');
     openReader(id, 0);
-    toast(`已净化：${art.title.slice(0, 22)} · ${art.readMin} 分钟读完`);
+    toast(`已净化：${(isCh && art.bookTitle ? art.bookTitle + ' · ' : '') + art.title.slice(0, 22)} · ${art.readMin} 分钟读完`);
   }catch(e){
     articleTask = { url:cu, status:'error', via:'', error:String(e && e.message || e).slice(0, 160) };
     if(S.view === 'article') render();
@@ -1852,7 +1920,7 @@ routes.article = () => {
   if(!t){
     return `<div class="bar solid"><button class="icon-btn" data-act="article-cancel">${ic('back','ico')}</button><div class="title">网页净化</div></div>
     <div class="scroll pad art-load"><div class="art-hero"><div class="art-badge">${ic('shield','ico')} 网页净化</div>
-      <h2>没有正在处理的链接</h2><p class="art-url">回到首页，把文章链接粘贴进搜索框就能自动净化。</p></div></div>`;
+      <h2>没有正在处理的链接</h2><p class="art-url">回到首页，把文章或小说章节链接粘贴进搜索框就能自动净化。</p></div></div>`;
   }
   const loading = t.status !== 'error';
   return `
@@ -1879,7 +1947,7 @@ routes.article = () => {
         </div>
       </div>`}
     <div class="art-note">
-      只保留正文与小标题，图片走代理，不加载原页的脚本、广告和推荐。文章存在本机，刷新后仍在，最多留最近 8 篇。<br>
+      只保留正文与小标题，图片走代理，不加载原页的脚本、广告和推荐。文章 / 章节存在本机，刷新后仍在，最多留最近 8 篇。<br>
       Cloudflare / Vercel 版用自家代理抓取；单文件版用 Microlink 公共解析，遇到限流时稍后再试。
     </div>
     <div class="spacer-b"></div>
@@ -1915,7 +1983,7 @@ hook('reader', () => {
     } else if(pc && b && b.chapters && b.chapters.length){
       pc.textContent = Math.max(1, Math.min(100, Math.round(((cur + within) / b.chapters.length) * 100))) + '%';
     }
-    const foot = $('#rd-foot span'); if(foot) foot.textContent = b && b.article ? '网页文章' : `${cur+1}/${b.chapters.length}`;
+    const foot = $('#rd-foot span'); if(foot) foot.textContent = b && b.article ? (b.kind==='chapter'?'网页章节':'网页文章') : `${cur+1}/${b.chapters.length}`;
     // 快滑到本章末尾：直接把下一章接上来
     if(max - body.scrollTop < 420) rdAppendNext();
     clearTimeout(scrollTimer);
@@ -2053,7 +2121,7 @@ routes.home = () => {
 
       <div class="searchbar">
         ${ic('search','ico sm')}
-        <input id="q" placeholder="搜书名、作者，或粘贴文章链接" enterkeyhint="search">
+        <input id="q" placeholder="搜书名、作者，或粘贴文章 / 章节链接" enterkeyhint="search">
         <button class="go" data-act="do-search">搜索</button>
       </div>
     </div>
@@ -2169,7 +2237,7 @@ routes.search = () => {
     <button class="icon-btn" data-act="go-home">${ic('back','ico')}</button>
     <div class="searchbar" style="flex:1;height:42px">
       ${ic('search','ico sm')}
-      <input id="q" value="${esc(q)}" placeholder="搜书名、作者，或粘贴文章链接">
+      <input id="q" value="${esc(q)}" placeholder="搜书名、作者，或粘贴文章 / 章节链接">
       <button class="go" data-act="do-search">智能搜索</button>
     </div>
   </div>
@@ -2468,20 +2536,22 @@ routes.history = () => {
   </div>
   <div class="scroll pad">
     <div class="sect-head">${ic('clock','ico')}<h3>浏览历史</h3>
-      <span class="libmeta" style="margin-left:auto">${list.length} 本</span></div>
+      <span class="libmeta" style="margin-left:auto">${list.length} 条</span></div>
     ${list.length ? `<div class="hist-list">
       ${list.map(x=>{
         const cs = coverSrc(x.b);
         const total = (x.b.chapters||[]).length;
+        const isCh = x.b.article && x.b.kind === 'chapter';
         const sub = x.b.article
-          ? `网页文章${x.b.chars?` · ${x.b.chars} 字`:''}`
+          ? `${isCh?'网页章节':'网页文章'}${x.b.chars?` · ${x.b.chars} 字`:''}`
           : (total ? `读到 ${Math.min(total, x.ch+1)}/${total} 章` : '目录待加载');
+        const disp = isCh && x.b.bookTitle ? `${x.b.bookTitle} · ${x.b.title}` : x.b.title;
         return `<div class="hist-row" data-act="open-book" data-id="${x.id}">
           <div class="cv" style="background:linear-gradient(150deg,${x.b.cover[0]},${x.b.cover[1]})">
-            ${cs?`<img src="${cs}" alt="" loading="lazy" onerror="this.style.display='none'">`:esc(x.b.title.slice(0,3))}
+            ${cs?`<img src="${cs}" alt="" loading="lazy" onerror="this.style.display='none'">`:esc(disp.slice(0,3))}
           </div>
           <div class="info">
-            <div class="t">${esc(x.b.title)}</div>
+            <div class="t">${esc(disp)}</div>
             <div class="s">${sub} · ${ago(x.ts)}</div>
           </div>
           <button class="btn ghost" data-act="hist-read" data-id="${x.id}" data-ch="${x.ch}">继续</button>
@@ -3285,7 +3355,7 @@ const ACTIONS = {
   },
   'toggle-pure'(){
     const b = book(S.bookId);
-    if(b && b.article){ toast('网页已经净化过，只保留正文'); return; }
+    if(b && b.article){ toast(b.kind==='chapter'?'这一章已经净化过，只保留正文':'网页已经净化过，只保留正文'); return; }
     S.reader.pure = !S.reader.pure;
     S.settings.pure = S.reader.pure;
     save(); render();
