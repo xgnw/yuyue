@@ -550,6 +550,39 @@ body.dark .continue{background:linear-gradient(135deg,#1E2436,#232A44);box-shado
 body.dark .continue .s{color:#98A3C9}
 body.dark .sheet-mask,.modal-mask{background:rgba(0,0,0,.55)}
 body.dark .reader{box-shadow:none}
+
+/* ==========================================================================
+   网页净化：粘贴外部文章链接 -> 抓取 -> 抽正文 -> 进阅读器
+   ========================================================================== */
+.art-load{min-height:64vh}
+.art-hero{padding:18px 2px 8px}
+.art-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#2B9A5B;background:#E9F9EF;border-radius:999px;padding:5px 10px}
+.art-badge .ico{width:14px;height:14px}
+.art-hero h2{margin:12px 0 8px;font-size:20px;font-weight:800;letter-spacing:.2px;color:var(--text)}
+.art-url{margin:0;font-size:11.5px;line-height:1.7;color:var(--muted);word-break:break-all}
+.art-steps{margin:18px 0 8px;display:grid;gap:10px}
+.art-step{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+.art-step i{width:18px;height:18px;border-radius:50%;background:#EDF0F7;display:grid;place-items:center;font-size:10px;font-style:normal;color:#7A839B;flex:none}
+.art-step.on i{background:#E9F9EF;color:#1B9A57}
+.art-step.on{color:var(--text);font-weight:600}
+.art-step.err i{background:#FDECEC;color:#C44747}
+.art-note{margin-top:16px;padding:12px 14px;border-radius:12px;background:#F5F7FC;font-size:11.5px;line-height:1.8;color:#6C7488}
+body.dark .art-note{background:#1D2130;color:#98A2BC}
+body.dark .art-url{color:#8A93AB}
+
+.rd-art-meta{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:11px;line-height:1.7;opacity:.62;margin:-8px 0 20px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.rd-art-meta span{display:inline-flex;align-items:center;gap:4px}
+.rd-art-html h2,.rd-art-html h3,.rd-art-html h4{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5;margin:1.25em 0 .55em;letter-spacing:.2px}
+.rd-art-html h2{font-size:calc(var(--fs) + 1px);font-weight:800}
+.rd-art-html h3{font-size:var(--fs);font-weight:800}
+.rd-art-html p{text-indent:0;margin-bottom:calc(var(--lh) * .62em)}
+.rd-art-html blockquote{margin:.9em 0;padding:10px 12px;border-left:3px solid rgba(120,130,160,.4);font-size:calc(var(--fs) - 1px);line-height:calc(var(--lh) * .92);opacity:.82;background:rgba(130,140,170,.06);border-radius:0 8px 8px 0}
+.rd-art-html .art-li{text-indent:0;padding-left:1.1em;position:relative}
+.rd-art-html .art-li::before{content:"·";position:absolute;left:.25em;opacity:.55}
+.rd-art-html figure{margin:1.1em 0}
+.rd-art-html img{display:block;width:100%;height:auto;border-radius:10px;background:rgba(130,140,170,.08)}
+.rd-art-html figcaption{font-size:11px;line-height:1.6;text-align:center;opacity:.55;margin-top:6px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.reader-foot .art-src{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -602,6 +635,8 @@ const I = {
   gift:'<path d="M4 10h16v10H4z"/><path d="M12 10v10M4 10c0-3 6-4 8 0 2-4 8-3 8 0"/>',
   fire:'<path d="M12 21c4 0 6-2.6 6-6 0-4-4-6-4-11-3 2-8 5-8 11 0 3.4 2 6 6 6z"/>',
   shield:'<path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  link:'<path d="M10 14a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+  refresh:'<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
   search2:'<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>',
   edit:'<path d="M4 20h4L20 8l-4-4L4 16z"/>',
   wifi:'<path d="M4 9a11 11 0 0 1 16 0M7 12.5a7 7 0 0 1 10 0M10 16a3 3 0 0 1 4 0"/><circle cx="12" cy="19" r="1"/>'
@@ -718,6 +753,7 @@ function defaultState(){
     settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1 },
     searchHistory:[],
     history:[],                    // 浏览历史 [{id, ch, ts}]，最近打开的在前
+    articles:[],                   // 粘贴链接净化后的网页文章（只留最近 8 篇，正文在本机）
     sourceOn:{},                   // {sourceId:bool} 书源开关（服务端也有，这里做即时反馈）
     rmMeta:{},                     // 远程书的轻量元信息（刷新后据此重新拉目录）
   };
@@ -739,6 +775,7 @@ const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const book = id => BOOKS.find(b => b.id === id) || (S.localBooks||[]).find(b => b.id === id)
+  || (S.articles||[]).find(b => b.id === id)
   || (LIVE.books||[]).find(b => b.id === id) || remoteBook(id);
 const allBooks = () => BOOKS.concat(S.localBooks||[]);
 const inShelf = id => S.shelf.some(x => x.id === id);
@@ -990,14 +1027,22 @@ function rdParasHTML(c){
 function rdChapterHTML(b, i, r){
   const c = b.chapters[i]; if(!c) return '';
   const isFirst = rdRT.loaded[0] === i;
+  const meta = b.article ? `<div class="rd-art-meta">
+      ${b.source?`<span>${esc(b.source)}</span>`:''}
+      ${b.author && b.author!==b.source?`<span>${esc(b.author)}</span>`:''}
+      ${b.published?`<span>${esc(b.published)}</span>`:''}
+      ${b.chars?`<span>${b.chars} 字 · 约 ${b.readMin||1} 分钟</span>`:''}
+    </div>` : '';
   return `<section class="rd-ch" data-ch="${i}">
     <div class="ch-title">${esc(c.title)}</div>
-    ${!r.pure && isFirst ? `<div class="site-note"><span class="lb">原网页</span>这是未清洗前的站点页面：顶部导航、侧栏推荐和悬浮按钮都在，正文被挤在中间。开启「纯净阅读」后只保留正文。</div>` : ''}
-    ${c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : '正在从书源抓取正文…'}</div>`}
+    ${meta}
+    ${!b.article && !r.pure && isFirst ? `<div class="site-note"><span class="lb">原网页</span>这是未清洗前的站点页面：顶部导航、侧栏推荐和悬浮按钮都在，正文被挤在中间。开启「纯净阅读」后只保留正文。</div>` : ''}
+    ${c.html ? `<div class="rd-art-html">${c.html}</div>` : (c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : '正在从书源抓取正文…'}</div>`)}
   </section>`;
 }
 function rdTailText(){
   const b = book(S.bookId); if(!b) return '';
+  if(b.article) return '已到文章末尾';
   const last = rdRT.loaded.length ? rdRT.loaded[rdRT.loaded.length-1] : 0;
   if(rdRT.loading) return '正在加载下一章…';
   return last+1 < b.chapters.length ? '继续下滑，自动接下一章' : '已是最后一章';
@@ -1008,7 +1053,7 @@ function rdTailNote(msg){
 /* 把下一章接到底部：先插占位，正文到达后原地填充，滚动位置不动 */
 function rdAppendNext(){
   const b = book(S.bookId);
-  if(!b || !b.chapters || rdRT.loading) return;
+  if(!b || b.article || !b.chapters || rdRT.loading) return;
   const last = rdRT.loaded.length ? rdRT.loaded[rdRT.loaded.length-1] : (S.reader||{}).ch || 0;
   const idx = last + 1;
   if(idx >= b.chapters.length){ rdTailNote('已是最后一章'); return; }
@@ -1347,6 +1392,16 @@ hook('search', () => {
   if(st.key !== q) liveSearch(q);
 });
 
+/* 搜索框里粘贴外部文章链接：不用点搜索，直接抓取并净化 */
+document.addEventListener('paste', e => {
+  const el = e.target;
+  if(!el || el.id !== 'q') return;
+  const text = ((e.clipboardData || window.clipboardData) || {}).getData?.('text') || '';
+  if(!/^(https?:\/\/|www\.)/i.test(String(text).trim())) return;
+  e.preventDefault();
+  if(!openArticleLink(text)) toast('这个链接看起来不太对，检查一下再试');
+});
+
 /* 全局设置：夜间模式（阅读器主题独立，不在此处） */
 function applyFontPrefs(){
   document.body.classList.toggle('dark', !!S.settings.dark);
@@ -1361,6 +1416,7 @@ function applyFontPrefs(){
 routes.reader = () => {
   const b = book(S.bookId);
   if(!b) return routes.home();
+  const art = !!b.article;
   // 从浏览历史/书架直接进在线书时，目录可能还没拉过：先取目录，取回来再重绘
   if(b.remote && !(b.chapters||[]).length){
     if(!b.fetchStarted) fetchRemoteToc(b, () => { if(S.view==='reader' && S.bookId===b.id) render(); });
@@ -1391,34 +1447,35 @@ routes.reader = () => {
     <div class="reader-head" id="rd-head">
       <button class="icon-btn" data-act="close-reader">${ic('back','ico')}</button>
       <div class="tt">${esc(b.title)}</div>
+      ${art ? `<button class="icon-btn" data-act="open-original-article" title="打开原文">${ic('link','ico')}</button>` : `
       <button class="icon-btn" data-act="prev-ch" title="上一章" ${ch<=0?'disabled style="opacity:.3"':''}><span style="display:inline-flex;transform:scaleX(-1)">${ic('chev','ico')}</span></button>
       <button class="icon-btn" data-act="next-ch" title="下一章" ${ch>=b.chapters.length-1?'disabled style="opacity:.3"':''}>${ic('chev','ico')}</button>
-      <button class="icon-btn" data-act="open-catalog">${ic('list','ico')}</button>
+      <button class="icon-btn" data-act="open-catalog">${ic('list','ico')}</button>`}
     </div>
 
     <div class="reader-body" id="rd-body">
-      ${!r.pure?`<div class="site-nav"><span>首页</span><span>分类</span><span>排行</span><span>搜索</span><span class="sp"></span><span class="s">站点导航</span></div>`:''}
+      ${!art && !r.pure?`<div class="site-nav"><span>首页</span><span>分类</span><span>排行</span><span>搜索</span><span class="sp"></span><span class="s">站点导航</span></div>`:''}
       ${rdRT.loaded.map(i => rdChapterHTML(b, i, r)).join('')}
-      ${!r.pure?`<div class="site-rec"><div class="blk"></div><div><b>站点推荐位</b><br>同类作品 · 热门榜单 · 下载客户端 ›</div></div>`:''}
+      ${!art && !r.pure?`<div class="site-rec"><div class="blk"></div><div><b>站点推荐位</b><br>同类作品 · 热门榜单 · 下载客户端 ›</div></div>`:''}
       <div id="rd-tail">
         <div id="rd-tail-note">${rdTailText()}</div>
-        <div style="display:flex;gap:10px;margin-bottom:18px">
+        ${art ? '' : `<div style="display:flex;gap:10px;margin-bottom:18px">
           <button class="btn line" style="flex:1;background:transparent;color:${th.fg};border-color:rgba(150,150,150,.35)" data-act="prev-ch" ${rdRT.loaded[0]===0?'disabled':''}>上一章</button>
           <button class="btn line" style="flex:1;background:transparent;color:${th.fg};border-color:rgba(150,150,150,.35)" data-act="next-ch" ${rdRT.loaded[rdRT.loaded.length-1]===b.chapters.length-1?'disabled':''}>下一章</button>
-        </div>
+        </div>`}
       </div>
     </div>
 
     <div class="reader-foot" id="rd-foot">
-      <span>${ch+1}/${b.chapters.length}</span>
+      <span class="${art?'art-src':''}">${art ? esc(b.source||'网页文章') : `${ch+1}/${b.chapters.length}`}</span>
       <div class="progress"><i id="rd-prog"></i></div>
-      <span id="rd-pct">${pct}%</span>
+      <span id="rd-pct">${art ? '0%' : pct+'%'}</span>
     </div>
 
     <div class="reader-tools" style="display:flex;align-items:center;justify-content:space-around;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:${th.bg};border-top:1px solid rgba(140,140,140,.14)">
-      <button data-act="open-catalog" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('list','ico')}<span>目录</span></button>
+      ${art ? `<button data-act="open-original-article" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('link','ico')}<span>原文</span></button>` : `<button data-act="open-catalog" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('list','ico')}<span>目录</span></button>`}
       <button data-act="open-reader-settings" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('font','ico')}<span>字号</span></button>
-      <button data-act="toggle-pure" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${r.pure?'#2B9A5B':th.fg};opacity:${r.pure?1:.8}">${ic('shield','ico')}<span>${r.pure?'纯净模式':'原网页'}</span></button>
+      ${art ? '' : `<button data-act="toggle-pure" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${r.pure?'#2B9A5B':th.fg};opacity:${r.pure?1:.8}">${ic('shield','ico')}<span>${r.pure?'纯净模式':'原网页'}</span></button>`}
       <button data-act="toggle-tts" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('play','ico')}<span>听书</span></button>
     </div>
 
@@ -1475,7 +1532,360 @@ routes.reader = () => {
   </div>`;
 };
 
-/* 阅读器：滚动进度保存 + 恢复 */
+/* ==========================================================================
+   网页净化：搜索栏粘贴外部文章链接 -> 抓页面 -> 抽正文 -> 去掉导航/广告/推荐
+   - Cloudflare / Vercel 版走各自后端的整页代理（/p 或 /api/page）
+   - 单文件版没有后端，退回 Microlink 的公开抓取（有频率限制）
+   ========================================================================== */
+let articleTask = null;
+const ART_PALETTE = [
+  ['#243A6B','#7C93C8'], ['#3C2A5A','#9779C7'], ['#1E4B45','#6FB7A4'],
+  ['#5A3A24','#C79A72'], ['#2B3350','#6F7FAE'], ['#4A2638','#B17B94']
+];
+function looksLikeUrl(t){
+  try{
+    const u = new URL(String(t||'').trim());
+    return /^(http|https):$/.test(u.protocol) && u.hostname.includes('.');
+  }catch(e){ return false; }
+}
+function urlInText(t){
+  const s = String(t||'').trim();
+  if(looksLikeUrl(s)) return s;
+  const m = s.match(/https?:\/\/[^\s<>"']+/i);
+  return m ? m[0].replace(/[),.;!?，。；：）】」]+$/,'') : '';
+}
+function canonUrl(raw){
+  try{
+    const u = new URL(raw);
+    u.hash = '';
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','spm','from','share_token','timestamp'].forEach(k => u.searchParams.delete(k));
+    return u.toString();
+  }catch(e){ return String(raw||''); }
+}
+function articleId(u){
+  return 'art_' + Math.abs(hashCode(u)).toString(36) + '_' + String(u).length;
+}
+function articleCover(id){
+  const h = Math.abs(hashCode(id));
+  return ART_PALETTE[h % ART_PALETTE.length];
+}
+function tidyArticleTitle(t, site){
+  let s = String(t||'').replace(/\s+/g,' ').trim();
+  s = s.replace(/^【[^】]{1,12}】\s*/,'');
+  if(!s) return '';
+  const parts = s.split(/\s+[-–—_|]\s+/);
+  if(parts.length > 1){
+    const tail = parts[parts.length-1];
+    if(tail.length <= 22 && site && (tail.includes(site.slice(0,4)) || site.includes(tail.slice(0,4)))){
+      s = parts.slice(0,-1).join(' - ');
+    }
+  }
+  return s.slice(0, 120);
+}
+function fmtArticleDate(v){
+  if(!v) return '';
+  const p = n => String(n).padStart(2,'0');
+  let s = String(v).trim()
+    .replace(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/, '$1-$2-$3')
+    .replace(/\./g,'-');
+  const head = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(head) return `${head[1]}-${p(head[2])}-${p(head[3])}`;
+  const d = new Date(s);
+  if(isNaN(d.getTime())) return String(v).slice(0, 16);
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function extractArticle(html, pageUrl, extra){
+  extra = extra || {};
+  const doc = new DOMParser().parseFromString(String(html||''), 'text/html');
+  const finalUrl = extra.finalUrl || pageUrl;
+  const abs = u => { try{ return new URL(u, finalUrl).href; }catch(e){ return ''; } };
+  const txt = el => el ? String(el.textContent||'').replace(/\s+/g,' ').trim() : '';
+  const meta = sel => { const el = doc.querySelector(sel); return el ? (el.getAttribute('content') || '') : ''; };
+
+  /* JSON-LD 里通常有最干净的标题、作者、发布时间与媒体名 */
+  let ld = null;
+  try{
+    const flat = [];
+    doc.querySelectorAll('script[type="application/ld+json"]').forEach(s => {
+      try{
+        const j = JSON.parse(s.textContent || 'null');
+        if(!j) return;
+        if(Array.isArray(j['@graph'])) flat.push(...j['@graph']);
+        else if(Array.isArray(j)) flat.push(...j);
+        else flat.push(j);
+      }catch(e){}
+    });
+    ld = flat.find(n => {
+      const t = n && n['@type'];
+      return /Article|NewsArticle|BlogPosting|ReportageNewsArticle/i.test(Array.isArray(t) ? t.join(',') : String(t||''));
+    }) || flat.find(n => n && (n.datePublished || n.headline)) || null;
+  }catch(e){}
+  const ldAuthor = (() => {
+    if(!ld || !ld.author) return '';
+    const a = Array.isArray(ld.author) ? ld.author[0] : ld.author;
+    return typeof a === 'string' ? a : (a && a.name) || '';
+  })();
+  const ldPublisher = (() => {
+    if(!ld || !ld.publisher) return '';
+    const p = Array.isArray(ld.publisher) ? ld.publisher[0] : ld.publisher;
+    return typeof p === 'string' ? p : (p && p.name) || '';
+  })();
+
+  /* 元信息要在清洗前取，清洗会把站点头部一起删掉 */
+  const docTitle = txt(doc.querySelector('title'));
+  const siteMeta = txt(doc.querySelector('meta[property="og:site_name"]')) || meta('meta[property="og:site_name"]');
+  const siteSuffix = (() => {
+    const parts = (docTitle || extra.title || '').split(/\s+[-–—_|]\s+/);
+    return parts.length > 1 ? parts[parts.length-1].trim() : '';
+  })();
+  const siteRaw = siteMeta || ldPublisher || (siteSuffix.length <= 26 ? siteSuffix : '');
+  const site = siteRaw.split(/\s+[-–—_|]\s+/)[0] || '';
+  const h1 = txt(doc.querySelector('h1'));
+  let title = h1 || extra.title || meta('meta[property="og:title"]') || docTitle || (ld && ld.headline) || '';
+  title = tidyArticleTitle(title, site);
+  if(!title) title = '未命名文章';
+  let author = extra.author || meta('meta[name="author"]') || meta('meta[property="article:author"]')
+    || (((ldAuthor && ldAuthor !== siteRaw && !siteRaw.includes(ldAuthor)) ? ldAuthor : ''))
+    || txt(doc.querySelector('[rel="author"], .vcard, .author, #js_name, .post-author, .entry-author'))
+    || ldAuthor;
+  author = String(author||'').replace(/^\s*(作者|文|撰文|来源)\s*[:：]\s*/,'').replace(/\s+/g,' ').trim().slice(0, 40);
+  const metaBlock = txt(doc.querySelector('.asset-meta, .entry-meta, .article-meta, .post-meta, .byline, .info'));
+  const dateGuess = (metaBlock.match(/(?:20\d{2})\s*[年\-/.]\s*\d{1,2}\s*[月\-/.]\s*\d{1,2}/) || [])[0] || '';
+  const published = fmtArticleDate(
+    meta('meta[property="article:published_time"]') || meta('meta[name="pubdate"]') || meta('meta[name="publishdate"]')
+    || (ld && (ld.datePublished || ld.dateCreated)) || ''
+    || (doc.querySelector('time[datetime]') ? doc.querySelector('time[datetime]').getAttribute('datetime') : '')
+    || txt(doc.querySelector('.date, .post-date, .entry-date, #publish_time'))
+    || dateGuess
+  );
+  let desc = extra.desc || meta('meta[property="og:description"]') || meta('meta[name="description"]') || (ld && ld.description) || '';
+  desc = String(desc||'').replace(/\s+/g,' ').trim().slice(0, 180);
+  let host = '';
+  try{ host = new URL(finalUrl).hostname.replace(/^www\./,''); }catch(e){}
+  const source = site || host || '网页';
+  if(author && siteRaw && author.replace(/\s+/g,'').toLowerCase() === siteRaw.replace(/\s+/g,'').toLowerCase()) author = '';
+
+  /* 去掉脚本、表单、导航、页脚、广告位和推荐位 */
+  const BAD = /(^|[\s_-])(ad|ads|advert|banner|sponsor|promo|share|social|comment|footer|header|nav|menu|sidebar|side|related|recommend|toolbar|breadcrumb|login|subscribe|paywall|qrcode|download|float|popup|modal|reward|praise)([\s_-]|$)/i;
+  doc.querySelectorAll('script,style,noscript,iframe,form,svg,canvas,button,input,select,textarea,link,meta,object,embed').forEach(n => n.remove());
+  doc.querySelectorAll('nav,header,footer,aside').forEach(n => n.remove());
+  doc.querySelectorAll('[class],[id]').forEach(n => {
+    const tag = (n.className && n.className.baseVal != null ? n.className.baseVal : n.className) || '';
+    const sig = tag + ' ' + (n.id || '');
+    if(BAD.test(sig)) n.remove();
+  });
+
+  const cands = [];
+  const SELS = ['article','[role="main"]','main','#js_content','.rich_media_content','.article-content','.entry-content','.post-content','.markdown-body','.article-body','.content','#content','.post','.article','.detail-content','.news-content'];
+  doc.querySelectorAll(SELS.join(',')).forEach(el => {
+    const t = String(el.textContent||'').replace(/\s+/g,' ').trim();
+    if(t.length < 80) return;
+    let score = t.length + el.querySelectorAll('p').length * 30;
+    if(el.tagName === 'ARTICLE') score += 600;
+    const sig = ((el.className && el.className.baseVal != null ? el.className.baseVal : el.className) || '') + ' ' + (el.id || '');
+    if(/article|content|post|entry|rich_media|markdown|main|detail|news/i.test(sig)) score += 300;
+    cands.push({ el, score });
+  });
+  cands.sort((a,b) => b.score - a.score);
+  let root = cands.length ? cands[0].el : doc.body;
+  if(!root) throw new Error('这个页面没有可读取的正文');
+
+  /* 正文按块重排：段落 / 小标题 / 引用 / 列表 / 图片，其他标签只取文字 */
+  const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
+  const BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','LI','PRE','FIGCAPTION','DD','DT']);
+  const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|返回|目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：])/;
+  const blocks = [], seenImg = new Set();
+  const clean = t => String(t||'').replace(/\u00a0/g,' ').replace(/\r/g,'')
+    .split('\n').map(x => x.replace(/[ \t\f\v]+/g,' ').trim()).filter(Boolean);
+
+  function addText(raw, tag){
+    clean(raw).forEach(line => {
+      if(line.length < 2 && !/^[0-9一二三四五六七八九十]/.test(line)) return;
+      if(line === title && tag !== 'H2' && tag !== 'H3') return;
+      if(JUNK.test(line) && line.length < 42) return;
+      if(/^https?:\/\/\S+$/.test(line) && line.length < 90) return;
+      if(line.length > 4000) line = line.slice(0, 4000);
+      const last = blocks[blocks.length-1];
+      if(last && last.t === line) return;
+      blocks.push({ t:line, tag });
+    });
+  }
+  function addImg(img){
+    if(!img) return;
+    let src = img.getAttribute('data-src') || img.getAttribute('data-original') || img.getAttribute('data-lazy-src') || img.getAttribute('src') || '';
+    if(!src && img.getAttribute('srcset')) src = img.getAttribute('srcset').split(',')[0].split(' ')[0];
+    if(!src || /^data:/i.test(src)) return;
+    src = abs(src);
+    if(!/^https?:/i.test(src)) return;
+    if(/\.(svg|ico)(\?|$)/i.test(src) || /(logo|avatar|icon|qrcode|pixel|spacer|blank|loading)/i.test(src)) return;
+    const w = Number(img.getAttribute('width')||0), h = Number(img.getAttribute('height')||0);
+    if((w && w < 80) || (h && h < 60)) return;
+    if(seenImg.has(src)) return; seenImg.add(src);
+    const proxied = (window.PLAT && location.protocol !== 'file:')
+      ? API_BASE + '/api/img?u=' + encodeURIComponent(src) : src;
+    blocks.push({ img:proxied, orig:src, alt:String(img.getAttribute('alt')||'').replace(/\s+/g,' ').trim().slice(0,80) });
+  }
+  function hasBlocks(el){
+    return Array.from(el.children).some(c => BLOCK.has(c.tagName) || ['DIV','SECTION','ARTICLE','FIGURE','UL','OL','TABLE'].includes(c.tagName));
+  }
+  function walk(el){
+    Array.from(el.children).forEach(child => {
+      const tag = child.tagName;
+      if(SKIP.has(tag)) return;
+      if(tag === 'IMG'){ addImg(child); return; }
+      if(tag === 'FIGURE'){
+        const img = child.querySelector('img'); if(img) addImg(img);
+        const cap = child.querySelector('figcaption');
+        if(cap && String(cap.textContent||'').trim().length >= 4) blocks.push({ t:String(cap.textContent||'').replace(/\s+/g,' ').trim().slice(0,160), tag:'FIGCAPTION' });
+        return;
+      }
+      if(tag === 'UL' || tag === 'OL'){ walk(child); return; }
+      if(BLOCK.has(tag) || ((tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE' || tag === 'TD') && !hasBlocks(child))){
+        if(child.matches('p,h1,h2,h3,h4,h5,h6,blockquote,li,pre,dd,dt,figcaption')) child.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+        addText(child.textContent, tag === 'LI' ? 'LI' : tag);
+        child.querySelectorAll('img').forEach(addImg);
+        return;
+      }
+      walk(child);
+    });
+  }
+  if(root.matches && root.matches('p,h2,h3,h4,blockquote,li')) addText(root.textContent, root.tagName);
+  else walk(root);
+
+  const plainBlocks = blocks.filter(b => b.t);
+  if(!plainBlocks.length) throw new Error('没有识别到正文，可能是登录墙、反爬页面或视频页');
+  let content = plainBlocks.map(b => b.t).join('\n\n');
+  if(content.length > 180000) content = content.slice(0, 180000);
+  if(content.length < 180) throw new Error('正文太短（' + content.length + ' 字），这个页面可能不是文章');
+
+  const htmlOut = blocks.map(b => {
+    if(b.img) return `<figure><img src="${esc(b.img)}" alt="${esc(b.alt||'')}" loading="lazy" referrerpolicy="no-referrer"></figure>`;
+    if(b.tag === 'FIGCAPTION') return `<figcaption>${esc(b.t)}</figcaption>`;
+    if(/^H[1-6]$/.test(b.tag)){
+      const lv = b.tag === 'H1' ? 2 : (b.tag === 'H2' ? 2 : (b.tag === 'H3' ? 3 : 4));
+      return `<h${lv}>${esc(b.t)}</h${lv}>`;
+    }
+    if(b.tag === 'BLOCKQUOTE') return `<blockquote>${esc(b.t)}</blockquote>`;
+    if(b.tag === 'LI') return `<p class="art-li">${esc(b.t)}</p>`;
+    return `<p>${esc(b.t)}</p>`;
+  }).join('');
+
+  return {
+    title, author, source, published, desc,
+    content, html: htmlOut,
+    finalUrl, blocks: blocks.length,
+    chars: content.replace(/\s/g,'').length,
+    readMin: Math.max(1, Math.round(content.replace(/\s/g,'').length / 450))
+  };
+}
+
+async function fetchArticleSource(url){
+  if(window.PLAT && typeof PLAT.fetchPage === 'function'){
+    const r = await PLAT.fetchPage(url);
+    if(!r || !r.text) throw new Error('抓取失败，页面没有返回内容');
+    return { html:r.text, finalUrl:r.url || url, via:'站内代理' };
+  }
+  // 单文件版没有后端：用 Microlink 的公开抓取（CORS 友好，限 5 次/窗口）
+  const api = 'https://api.microlink.io/?url=' + encodeURIComponent(url)
+    + '&data.content.selector=' + encodeURIComponent('body')
+    + '&data.content.type=html';
+  let res;
+  try{ res = await fetch(api, { headers:{ accept:'application/json' } }); }
+  catch(e){ throw new Error('网络请求被拦截，单文件版请用云端版，或检查网络'); }
+  let j = null;
+  try{ j = await res.json(); }catch(e){}
+  if(!res.ok || !j || j.status !== 'success' || !j.data || typeof j.data.content !== 'string'){
+    const msg = (j && (j.message || (j.data && j.data.message))) || ('HTTP ' + res.status);
+    throw new Error('公开抓取失败：' + String(msg).slice(0, 80));
+  }
+  return {
+    html:j.data.content, finalUrl:j.data.url || url,
+    title:j.data.title || '', author:j.data.author || '',
+    desc:j.data.description || '', via:'Microlink 公共解析'
+  };
+}
+
+function openArticleLink(raw){
+  const url = urlInText(raw);
+  if(!url) return false;
+  const cu = canonUrl(url);
+  const old = (S.articles||[]).find(a => a.id === articleId(cu) || a.url === cu);
+  if(old){ sessionStorage.setItem('openReaderFrom','home'); openReader(old.id, 0); return true; }
+  articleTask = { url:cu, status:'loading', via:'', error:'' };
+  S.view = 'article';
+  render();
+  loadArticle(cu);
+  return true;
+}
+
+async function loadArticle(url){
+  const cu = canonUrl(url);
+  articleTask = { url:cu, status:'loading', via:'', error:'' };
+  if(S.view === 'article') render();
+  try{
+    const src = await fetchArticleSource(cu);
+    const art = extractArticle(src.html, src.finalUrl || cu, src);
+    const id = articleId(cu);
+    const item = {
+      id, title:art.title, author:art.author || art.source || '网页文章', cat:'网页文章',
+      tags:['网页','净化'], cover:articleCover(id), hot:0,
+      intro:(art.desc || art.content.slice(0, 100)).slice(0, 160),
+      chapters:[{ title:art.title, content:art.content, html:art.html }],
+      article:true, url:cu, source:art.source, published:art.published,
+      chars:art.chars, readMin:art.readMin, via:src.via, fetchedAt:Date.now()
+    };
+    S.articles = [item, ...(S.articles||[]).filter(a => a.id !== id)].slice(0, 8);
+    articleTask = null;
+    save();
+    sessionStorage.setItem('openReaderFrom','home');
+    openReader(id, 0);
+    toast(`已净化：${art.title.slice(0, 22)} · ${art.readMin} 分钟读完`);
+  }catch(e){
+    articleTask = { url:cu, status:'error', via:'', error:String(e && e.message || e).slice(0, 160) };
+    if(S.view === 'article') render();
+    toast('净化失败：' + (e && e.message ? e.message : '未知错误'));
+  }
+}
+
+routes.article = () => {
+  const t = articleTask;
+  if(!t){
+    return `<div class="bar solid"><button class="icon-btn" data-act="article-cancel">${ic('back','ico')}</button><div class="title">网页净化</div></div>
+    <div class="scroll pad art-load"><div class="art-hero"><div class="art-badge">${ic('shield','ico')} 网页净化</div>
+      <h2>没有正在处理的链接</h2><p class="art-url">回到首页，把文章链接粘贴进搜索框就能自动净化。</p></div></div>`;
+  }
+  const loading = t.status !== 'error';
+  return `
+  <div class="bar solid"><button class="icon-btn" data-act="article-cancel">${ic('back','ico')}</button><div class="title">网页净化</div></div>
+  <div class="scroll pad art-load">
+    <div class="art-hero">
+      <div class="art-badge">${ic('shield','ico')} 网页净化</div>
+      <h2>${loading ? '正在净化这篇网页' : '这篇没洗净'}</h2>
+      <p class="art-url">${esc(t.url)}</p>
+      <div class="art-steps">
+        <div class="art-step ${loading ? 'on' : 'err'}"><i>${loading ? '1' : '!'}</i><span>${loading ? '抓取网页…' : '抓取失败'}</span></div>
+        <div class="art-step ${loading ? '' : 'err'}"><i>2</i><span>识别正文容器</span></div>
+        <div class="art-step ${loading ? '' : 'err'}"><i>3</i><span>去掉广告、导航与推荐位</span></div>
+        <div class="art-step ${loading ? '' : 'err'}"><i>4</i><span>排版成可读页面</span></div>
+      </div>
+    </div>
+    ${loading ? `<div class="skel"></div><div class="skel"></div><div class="skel"></div>` : `
+      <div class="notice" style="margin-top:8px">
+        <div class="nt">${esc(t.error || '抓取失败')}</div>
+        <div class="nd">常见原因：站点要求登录 / 反爬拦截 / 链接失效 / 公共解析额度用完。可以换一个链接，或直接打开原文。</div>
+        <div class="nacts">
+          <button class="btn ghost" data-act="article-retry">${ic('refresh','ico sm')} 重试</button>
+          <button class="btn ghost" data-act="open-original" data-u="${esc(t.url)}">${ic('link','ico sm')} 打开原文</button>
+        </div>
+      </div>`}
+    <div class="art-note">
+      只保留正文与小标题，图片走代理，不加载原页的脚本、广告和推荐。文章存在本机，刷新后仍在，最多留最近 8 篇。<br>
+      Cloudflare / Vercel 版用自家代理抓取；单文件版用 Microlink 公共解析，遇到限流时稍后再试。
+    </div>
+    <div class="spacer-b"></div>
+  </div>`;
+};
+
 let scrollTimer = null;
 hook('reader', () => {
   const body = $('#rd-body');
@@ -1500,10 +1910,12 @@ hook('reader', () => {
     S.progress[S.bookId] = {ch: cur, ratio, ts:Date.now()};
     const bar = $('#rd-prog'); if(bar) bar.style.width = (ratio*100).toFixed(1)+'%';
     const pc = $('#rd-pct');
-    if(pc && b && b.chapters && b.chapters.length){
+    if(pc && b && b.article){
+      pc.textContent = (ratio >= 1 ? 100 : Math.max(1, Math.round(ratio * 100))) + '%';
+    } else if(pc && b && b.chapters && b.chapters.length){
       pc.textContent = Math.max(1, Math.min(100, Math.round(((cur + within) / b.chapters.length) * 100))) + '%';
     }
-    const foot = $('#rd-foot span'); if(foot) foot.textContent = `${cur+1}/${b.chapters.length}`;
+    const foot = $('#rd-foot span'); if(foot) foot.textContent = b && b.article ? '网页文章' : `${cur+1}/${b.chapters.length}`;
     // 快滑到本章末尾：直接把下一章接上来
     if(max - body.scrollTop < 420) rdAppendNext();
     clearTimeout(scrollTimer);
@@ -1641,7 +2053,7 @@ routes.home = () => {
 
       <div class="searchbar">
         ${ic('search','ico sm')}
-        <input id="q" placeholder="搜书名、作者、关键词" enterkeyhint="search">
+        <input id="q" placeholder="搜书名、作者，或粘贴文章链接" enterkeyhint="search">
         <button class="go" data-act="do-search">搜索</button>
       </div>
     </div>
@@ -1757,7 +2169,7 @@ routes.search = () => {
     <button class="icon-btn" data-act="go-home">${ic('back','ico')}</button>
     <div class="searchbar" style="flex:1;height:42px">
       ${ic('search','ico sm')}
-      <input id="q" value="${esc(q)}" placeholder="搜书名、作者、关键词">
+      <input id="q" value="${esc(q)}" placeholder="搜书名、作者，或粘贴文章链接">
       <button class="go" data-act="do-search">智能搜索</button>
     </div>
   </div>
@@ -2061,7 +2473,9 @@ routes.history = () => {
       ${list.map(x=>{
         const cs = coverSrc(x.b);
         const total = (x.b.chapters||[]).length;
-        const sub = total ? `读到 ${Math.min(total, x.ch+1)}/${total} 章` : '目录待加载';
+        const sub = x.b.article
+          ? `网页文章${x.b.chars?` · ${x.b.chars} 字`:''}`
+          : (total ? `读到 ${Math.min(total, x.ch+1)}/${total} 章` : '目录待加载');
         return `<div class="hist-row" data-act="open-book" data-id="${x.id}">
           <div class="cv" style="background:linear-gradient(150deg,${x.b.cover[0]},${x.b.cover[1]})">
             ${cs?`<img src="${cs}" alt="" loading="lazy" onerror="this.style.display='none'">`:esc(x.b.title.slice(0,3))}
@@ -2395,6 +2809,7 @@ function openBook(id){
 function doSearch(q){
   const kw = (q ?? $('#q')?.value ?? '').trim();
   if(!kw){ toast('先输入书名、作者或关键词'); return; }
+  if(/^https?:\/\//i.test(kw) && openArticleLink(kw)) return;
   S.query = kw;
   S.searchHistory = [kw, ...(S.searchHistory||[]).filter(x=>x!==kw)].slice(0,8);
   S.view = 'search'; save(); render();
@@ -2476,6 +2891,17 @@ const ACTIONS = {
   'do-search'(){ doSearch(); },
   'quick-search'(el){ doSearch(el.dataset.q); },
   'go-home'(){ S.view = 'home'; save(); render(); },
+  'article-cancel'(){ articleTask = null; S.view = 'home'; render(); },
+  'article-retry'(){ if(articleTask && articleTask.url) loadArticle(articleTask.url); },
+  'open-original'(el){
+    const u = el.dataset.u || (articleTask && articleTask.url);
+    if(u) window.open(u, '_blank', 'noopener');
+  },
+  'open-original-article'(){
+    const b = book(S.bookId);
+    if(b && b.url) window.open(b.url, '_blank', 'noopener');
+    else toast('没有记录原文地址');
+  },
   'go-search'(){ S.view = 'search'; save(); render(); },
   'go-search-list'(){ S.query = ''; S.view = 'search'; save(); render(); },
   'go-history'(){ S.view = 'history'; save(); render(); },
@@ -2484,7 +2910,11 @@ const ACTIONS = {
   'hist-read'(el){ openReader(el.dataset.id, Number(el.dataset.ch || 0)); },
   'clear-all-history'(){ S.history = []; save(); render(); toast('已清空浏览历史'); },
   'clear-history'(){ S.searchHistory = []; save(); render(); toast('已清空搜索历史'); },
-  'open-book'(el){ openBook(el.dataset.id); },
+  'open-book'(el){
+    const b = book(el.dataset.id);
+    if(b && b.article){ sessionStorage.setItem('openReaderFrom', S.view); openReader(b.id, 0); return; }
+    openBook(el.dataset.id);
+  },
   'open-result'(el){
     const id = el.dataset.id;
     if(id) openBook(id);
@@ -2854,6 +3284,8 @@ const ACTIONS = {
     save();
   },
   'toggle-pure'(){
+    const b = book(S.bookId);
+    if(b && b.article){ toast('网页已经净化过，只保留正文'); return; }
     S.reader.pure = !S.reader.pure;
     S.settings.pure = S.reader.pure;
     save(); render();
