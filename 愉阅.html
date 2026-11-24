@@ -1668,10 +1668,34 @@ function buildChapterList(art, plan, cu){
   }
   return { chapters:[Object.assign({}, first, { html:art.html })], multi:!!plan.nextUrl, mode:'next' };
 }
+async function appendSameChapterPages(art, url, via){
+  const stem = u => { try{ return new URL(u).pathname.replace(/_\d+\.html?$/i,'.html'); }catch(e){ return ''; } };
+  const sameStem = stem(url);
+  let content = art.content || '', chars = art.chars || 0, next = art.nextUrl || '', pages = 1;
+  while(next && pages < 10){
+    let path = '';
+    try{ path = new URL(next).pathname; }catch(e){}
+    if(!/_\d+\.html?$/i.test(path) || stem(next) !== sameStem) break;
+    let na;
+    try{ na = extractArticle((await fetchArticleSource(next)).html, next, { title:art.title, via }); }
+    catch(e){ break; }
+    if(!na || na.chars < 40) break;
+    content = content.replace(/\s+$/,'') + '\n\n' + na.content;
+    chars += na.chars;
+    next = na.nextUrl || '';
+    pages++;
+  }
+  const title = String(art.title||'').replace(/[（(]\s*第\s*\d+\s*页\s*[）)]\s*$/,'').trim();
+  return Object.assign({}, art, {
+    title:title || art.title, content, chars,
+    readMin: Math.max(1, Math.round(chars / 450))
+  });
+}
 async function fetchChapterData(url, titleHint){
   const src = await fetchArticleSource(url);
-  const art = extractArticle(src.html, src.finalUrl || url, { title:titleHint || '', via:src.via });
+  let art = extractArticle(src.html, src.finalUrl || url, { title:titleHint || '', via:src.via });
   if(!art || art.chars < 120) throw new Error('正文太短');
+  if(art.kind === 'chapter' && art.nextUrl) art = await appendSameChapterPages(art, url, src.via);
   return {
     title:art.title, content:art.content, chars:art.chars, readMin:art.readMin,
     finalUrl:art.finalUrl || src.finalUrl || url, nextUrl:art.nextUrl || '',
@@ -1839,7 +1863,8 @@ async function loadArticle(url){
   if(S.view === 'article') render();
   try{
     const src = await fetchArticleSource(cu);
-    const art = extractArticle(src.html, src.finalUrl || cu, src);
+    let art = extractArticle(src.html, src.finalUrl || cu, src);
+    if(art.kind === 'chapter' && art.nextUrl) art = await appendSameChapterPages(art, cu, src.via);
     const id = articleId(cu);
     const isCh = art.kind === 'chapter';
     let plan = null, built = null;
