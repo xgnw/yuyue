@@ -829,7 +829,7 @@ const LIVE = {
   sources:{ total:0, enabled:0, ok:0 },
   books:[],                                  // 远程书（含目录、按需正文），内存态
   search:{ key:'', state:'idle', res:null, err:'' },
-  srcList:null, srcLoading:false, srcFilter:'ok',
+  srcList:null, srcLoading:false, srcFilter:'ok', srcQuery:'',
   cache:{}                                   // 每本书的离线缓存状态（按 book.id）
 };
 
@@ -3224,10 +3224,16 @@ routes.sources = () => {
   }
   if(!LIVE.srcList && !LIVE.srcLoading) loadSourceList();
   const L = LIVE.srcList || [];
-  const cnt = k => k==='all' ? L.length : L.filter(x=>x.status===k).length;
+  const cnt = k => k==='all' ? L.length
+    : k==='custom' ? L.filter(x=>x.group==='自建').length
+    : L.filter(x=>x.status===k).length;
   const f = LIVE.srcFilter;
-  const list = L.filter(x => f==='all' || x.status===f).slice(0, 400);
-  const FILTERS = [['ok','可用'],['part','部分可用'],['dead','失效'],['untested','未测'],['all','全部']];
+  const q = String(LIVE.srcQuery||'').trim().toLowerCase();
+  const list = L.filter(x => {
+    const hit = !q || [x.name, x.group, x.host, x.url].some(v => String(v||'').toLowerCase().includes(q));
+    return hit && (f==='all' || (f==='custom' ? x.group==='自建' : x.status===f));
+  }).slice(0, 400);
+  const FILTERS = [['ok','可用'],['part','仅搜索'],['dead','失效'],['untested','未测'],['custom','自建'],['all','全部']];
   const badge = s => s==='ok' ? '<span class="st" style="background:#E8F7EE;color:#1E874B">全链路</span>'
     : s==='part' ? '<span class="st" style="background:#FFF4E2;color:#B4791C">仅搜索</span>'
     : s==='dead' ? '<span class="st" style="background:#FDECEC;color:#C0392B">失效</span>'
@@ -3243,6 +3249,11 @@ routes.sources = () => {
       <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 14px;white-space:nowrap" data-act="make-source" title="粘贴小说详情页链接，自动推断规则并造源">${ic('edit','ico sm')} 造源</button>
       <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 14px;white-space:nowrap" data-act="export-sources" title="导出当前书源清单">${ic('share','ico sm')} 导出</button>
     </div>
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+      <input id="src-q" class="field" data-act="src-search" value="${esc(LIVE.srcQuery||'')}" placeholder="搜书名 / 域名 / 分组，比如 xinwanben" autocomplete="off" style="flex:1;height:38px;margin:0;font-size:12px">
+      ${q?`<button class="btn ghost" style="flex:0 0 auto;height:38px;margin:0;padding:0 12px" data-act="src-clear">清除</button>`:''}
+    </div>
+    ${q?`<div style="font-size:11px;color:var(--muted);padding:6px 2px 0">搜索“${esc(LIVE.srcQuery)}”：找到 ${list.length} 个${LIVE.srcFilter!=='all'&&LIVE.srcFilter!=='custom'?'（已自动切到全部状态）':''}</div>`:''}
     <div style="font-size:11px;color:var(--muted);padding:8px 2px 2px;line-height:1.8">
       导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
       含 @js / @webview / 需登录的书源云端跑不了，导入时会自动跳过。
@@ -3253,7 +3264,7 @@ routes.sources = () => {
       共 ${LIVE.sources.total||L.length} 个书源，参与搜索 ${cnt('ok')} 个全链路可用 + 未测源。
       状态是本机实测结果：搜索、目录、正文三段都跑通的才算「全链路」。
     </div>
-    <div class="rank-tabs" style="padding:12px 0 8px">
+    <div class="rank-tabs" style="padding:12px 0 8px;flex-wrap:wrap;overflow:visible;row-gap:8px">
       ${FILTERS.map(([k,n])=>`<button class="r ${f===k?'on':''}" data-act="src-filter" data-k="${k}">${n} ${cnt(k)}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 2px 8px;flex-wrap:wrap">
@@ -3264,6 +3275,9 @@ routes.sources = () => {
       已测 ${LIVE.testing.done}/${LIVE.testing.total} · 可用 ${LIVE.testing.ok} · 仅搜索 ${LIVE.testing.part} · 失效 ${LIVE.testing.dead}
     </div>`:''}
     ${LIVE.srcLoading?`<div class="skel"></div><div class="skel"></div>`:''}
+    ${(!LIVE.srcLoading && !list.length)?`<div class="card" style="padding:18px;margin-top:10px;text-align:center;font-size:12px;color:var(--muted);line-height:1.9">
+      没有匹配的书源。<br>${q?'换个关键词，或点「清除」查看全部。':'这个状态下暂时没有书源，切到「全部」看看。'}
+    </div>`:''}
     ${list.map(s=>`
       <div class="src-row">
         <span class="dot" style="background:${s.status==='ok'?'#1E874B':s.status==='part'?'#E0A33E':s.status==='dead'?'#D64545':'#B9C0D4'}"></span>
@@ -3506,6 +3520,16 @@ const ACTIONS = {
     toast('已切换到来源：' + b.sourceName);
   },
   'src-filter'(el){ LIVE.srcFilter = el.dataset.k; render(); },
+  'src-search'(el){
+    const v = el.value || '';
+    const pos = el.selectionStart == null ? v.length : el.selectionStart;
+    LIVE.srcQuery = v;
+    if(v.trim() && LIVE.srcFilter !== 'all' && LIVE.srcFilter !== 'custom') LIVE.srcFilter = 'all';
+    render();
+    const n = $('#src-q');
+    if(n){ n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} }
+  },
+  'src-clear'(){ LIVE.srcQuery = ''; render(); },
   'toggle-source'(el){
     const id = el.dataset.id;
     const on = !el.classList.contains('on');
@@ -3973,6 +3997,8 @@ document.addEventListener('keydown', (e)=>{
 document.addEventListener('input', (e)=>{
   const el = e.target.closest('[data-act="set-bright"]');
   if(el) ACTIONS['set-bright'](el);
+  const s = e.target.closest('[data-act="src-search"]');
+  if(s) ACTIONS['src-search'](s);
 });
 
 /* 退出时保存阅读时长（按页面停留估算） */
