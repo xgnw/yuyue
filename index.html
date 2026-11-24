@@ -1709,6 +1709,7 @@ function tidyArticleTitle(t, site){
   let s = String(t||'').replace(/\s+/g,' ').trim();
   s = s.replace(/^【[^】]{1,12}】\s*/,'');
   if(!s) return '';
+  s = s.replace(/^.*?目录\s+(?=第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷])/,'');
   const parts = s.split(/\s+[-–—_|]\s+/);
   if(parts.length > 1){
     const tail = parts[parts.length-1];
@@ -1730,9 +1731,24 @@ function fmtArticleDate(v){
   if(isNaN(d.getTime())) return String(v).slice(0, 16);
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
+function b64utf8(s){
+  const bin = atob(String(s || '').replace(/\s+/g, ''));
+  const bytes = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+/* 部分小说站把正文拆成 base64 的 document.writeln(qsbs.bb('...'))；
+   DOMParser 不执行脚本，先还原成正常 HTML 再抽正文。 */
+function decodeObfuscatedHtml(html){
+  if(!html || html.indexOf('qsbs.bb(') < 0) return html;
+  return html.replace(/<script\b[^>]*>\s*document\.(?:write|writeln)\(\s*qsbs\.bb\(\s*(['"])([\s\S]*?)\1\s*\)\s*\)\s*;?\s*<\/script>/gi, (m, q, b64) => {
+    try{ return b64utf8(b64); }catch(e){ return m; }
+  });
+}
 function extractArticle(html, pageUrl, extra){
   extra = extra || {};
-  const doc = new DOMParser().parseFromString(String(html||''), 'text/html');
+  html = decodeObfuscatedHtml(String(html || ''));
+  const doc = new DOMParser().parseFromString(html, 'text/html');
   const finalUrl = extra.finalUrl || pageUrl;
   const abs = u => { try{ return new URL(u, finalUrl).href; }catch(e){ return ''; } };
   const txt = el => el ? String(el.textContent||'').replace(/\s+/g,' ').trim() : '';
@@ -1800,6 +1816,11 @@ function extractArticle(html, pageUrl, extra){
     if(!bookTitle){
       const cand = dtParts.find(x => x !== title && x !== site && x !== siteRaw && !CHAPTER_RE.test(x) && x.length <= 30);
       bookTitle = (cand || '').split(/\s+[-–—_|]\s+/)[0].trim().slice(0, 60);
+    }
+    if(!bookTitle || bookTitle === site || bookTitle === siteRaw){
+      const kw = meta('meta[name="keywords"]').split(/[,，]/)[0].trim();
+      const kwBook = kw.replace(/第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷].*$/,'').trim();
+      if(kwBook && kwBook.length <= 40 && kwBook !== site && kwBook !== siteRaw) bookTitle = kwBook;
     }
     bookTitle = bookTitle.replace(/[（(][^）)]{1,10}[）)].*$/, '').replace(/\s+/g, ' ').trim().slice(0, 60);
   } else {
@@ -2059,14 +2080,73 @@ function parseCatalogLinks(html, base){
   if(out.length > 1 && out[0].no != null && out[out.length-1].no != null && out[0].no > out[out.length-1].no) out.reverse();
   return out;
 }
+function findCatalogStart(html, base){
+  let doc;
+  try{ doc = new DOMParser().parseFromString(String(html||''), 'text/html'); }catch(e){ return ''; }
+  for(const a of doc.querySelectorAll('a[href]')){
+    const t = String(a.textContent||'').replace(/\s+/g,' ').trim();
+    const href = a.getAttribute('href') || '';
+    if(!href || /^(javascript:|#)/i.test(href)) continue;
+    if(!/^(查看更多章节|查看全部章节|完整目录|全部章节|查看全部|展开全部|更多章节)(\.{2,}|…)?$/.test(t)) continue;
+    try{ return new URL(href, base).href; }catch(e){}
+  }
+  return '';
+}
+function findCatalogNext(html, base){
+  let doc;
+  try{ doc = new DOMParser().parseFromString(String(html||''), 'text/html'); }catch(e){ return ''; }
+  for(const a of doc.querySelectorAll('a[href]')){
+    const t = String(a.textContent||'').replace(/\s+/g,' ').trim();
+    const href = a.getAttribute('href') || '';
+    if(!href || /^(javascript:|#)/i.test(href)) continue;
+    if(!/^(下一页|下页|下一頁|下页目录)$/.test(t)) continue;
+    try{ return new URL(href, base).href; }catch(e){}
+  }
+  return '';
+}
+async function collectCatalogLinks(art, cu){
+  let cur = art.catalogUrl;
+  if(!cur) return [];
+  let src = await fetchArticleSource(cur);
+  let html = src.html, base = src.finalUrl || cur;
+  let links = parseCatalogLinks(html, base);
+  const pages = new Set([urlKey(cur), urlKey(base)]);
+  // 有些站点的“目录”入口只是最新章列表，真正的完整目录在“查看更多章节”里
+  const more = findCatalogStart(html, base);
+  if(more && !pages.has(urlKey(more))){
+    cur = more;
+    src = await fetchArticleSource(cur); html = src.html; base = src.finalUrl || cur;
+    links = parseCatalogLinks(html, base);
+    pages.add(urlKey(cur)); pages.add(urlKey(base));
+  }
+  // 分页目录：ml1 -> ml2 -> ...，逐页合并，最多 30 页
+  for(let i = 0; i < 30; i++){
+    const next = findCatalogNext(html, base);
+    if(!next || pages.has(urlKey(next))) break;
+    if(urlKey(next) === urlKey(cu)) break;
+    pages.add(urlKey(next));
+    try{
+      const ns = await fetchArticleSource(next);
+      const part = parseCatalogLinks(ns.html, ns.finalUrl || next);
+      if(part.length){ links = links.concat(part); html = ns.html; base = ns.finalUrl || next; }
+      else break;
+    }catch(e){ break; }
+  }
+  const seen = new Set(); links = links.filter(l => { const k = urlKey(l.url); if(seen.has(k)) return false; seen.add(k); return true; });
+  if(links.length > 1 && links.every(l => l.no != null)) links.sort((a,b) => a.no - b.no);
+  return links;
+}
 async function discoverChapterPlan(art, cu){
   if(art.catalogUrl && urlKey(art.catalogUrl) !== urlKey(cu)){
     try{
-      const src = await fetchArticleSource(art.catalogUrl);
-      const links = parseCatalogLinks(src.html, src.finalUrl || art.catalogUrl);
+      const links = await collectCatalogLinks(art, cu);
       if(links.length > 1){
         let idx = links.findIndex(l => urlKey(l.url) === urlKey(cu));
         if(idx < 0) idx = links.findIndex(l => chapterKey(l.title) === chapterKey(art.title));
+        if(idx < 0){
+          const no = chapterNo(art.title);
+          if(no != null) idx = links.findIndex(l => l.no != null && l.no >= no);
+        }
         let nextIdx = art.nextUrl ? links.findIndex(l => urlKey(l.url) === urlKey(art.nextUrl)) : -1;
         if(idx < 0 && nextIdx > 0) idx = nextIdx - 1;
         if(idx < 0) idx = 0;
