@@ -768,7 +768,22 @@ let S = (() => {
     user:Object.assign(base.user, saved.user||{}),
   });
 })();
-function save(){ Store.set(S); }
+/* 网页章节整本抓取时，正文按章存进 IndexedDB；localStorage 只留前几章和目录，
+   否则 1000+ 章会撑爆 5MB 配额。 */
+function articleSnapshot(a){
+  if(!a || !a.archive) return a;
+  const cur = S.reader && S.reader.bookId === a.id ? (S.reader.ch || 0) : 0;
+  const keep = new Set([0,1,2,3,4,5,6,7,8,9,cur]);
+  return Object.assign({}, a, {
+    chapters:(a.chapters||[]).map((c,i)=> keep.has(i)
+      ? { title:c.title, url:c.url, content:c.content||'', chars:c.chars||0, readMin:c.readMin||1, error:c.error||'' }
+      : { title:c.title, url:c.url, chars:c.chars||0, readMin:c.readMin||1 })
+  });
+}
+function stateSnapshot(){
+  return Object.assign({}, S, { articles:(S.articles||[]).map(articleSnapshot) });
+}
+function save(){ Store.set(stateSnapshot()); }
 
 /* ------------------------- 4. 工具函数 ------------------------- */
 const $ = (s, r=document) => r.querySelector(s);
@@ -1031,21 +1046,30 @@ function rdChapterHTML(b, i, r){
       ${b.source?`<span>${esc(b.source)}</span>`:''}
       ${b.author && b.author!==b.source?`<span>${esc(b.author)}</span>`:''}
       ${b.published?`<span>${esc(b.published)}</span>`:''}
-      ${b.chars?`<span>${b.chars} 字 · 约 ${b.readMin||1} 分钟</span>`:''}
+      ${(c.chars || b.chars)?`<span>${c.chars || b.chars} 字 · 约 ${c.readMin || b.readMin || 1} 分钟</span>`:''}
     </div>` : '';
   return `<section class="rd-ch" data-ch="${i}">
     <div class="ch-title">${esc(c.title)}</div>
     ${meta}
     ${!b.article && !r.pure && isFirst ? `<div class="site-note"><span class="lb">原网页</span>这是未清洗前的站点页面：顶部导航、侧栏推荐和悬浮按钮都在，正文被挤在中间。开启「纯净阅读」后只保留正文。</div>` : ''}
-    ${c.html ? `<div class="rd-art-html">${c.html}</div>` : (c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : '正在从书源抓取正文…'}</div>`)}
+    ${c.html ? `<div class="rd-art-html">${c.html}</div>` : (c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : (b.article ? '正在抓取本章正文…' : '正在从书源抓取正文…')}</div>`)}
   </section>`;
 }
 function rdTailText(){
   const b = book(S.bookId); if(!b) return '';
-  if(b.article) return b.kind === 'chapter' ? '已到章节末尾' : '已到文章末尾';
   const last = rdRT.loaded.length ? rdRT.loaded[rdRT.loaded.length-1] : 0;
   if(rdRT.loading) return '正在加载下一章…';
-  return last+1 < b.chapters.length ? '继续下滑，自动接下一章' : '已是最后一章';
+  if(last+1 < b.chapters.length){
+    if(b.article && !b.chapters[last+1].content){
+      return (b.crawl && b.crawl.status === 'loading') ? '正在补全剩余章节…' : '继续下滑，自动接下一章';
+    }
+    return '继续下滑，自动接下一章';
+  }
+  if(b.article){
+    if(b.crawl && b.crawl.status === 'loading') return '正在补全剩余章节…';
+    return b.chapters.length > 1 ? '已是最后一章' : (b.kind === 'chapter' ? '已到章节末尾' : '已到文章末尾');
+  }
+  return '已是最后一章';
 }
 function rdTailNote(msg){
   const el = $('#rd-tail-note'); if(el) el.textContent = msg || rdTailText();
@@ -1053,12 +1077,17 @@ function rdTailNote(msg){
 /* 把下一章接到底部：先插占位，正文到达后原地填充，滚动位置不动 */
 function rdAppendNext(){
   const b = book(S.bookId);
-  if(!b || b.article || !b.chapters || rdRT.loading) return;
+  if(!b || !b.chapters || rdRT.loading) return;
   const last = rdRT.loaded.length ? rdRT.loaded[rdRT.loaded.length-1] : (S.reader||{}).ch || 0;
   const idx = last + 1;
-  if(idx >= b.chapters.length){ rdTailNote('已是最后一章'); return; }
+  if(idx >= b.chapters.length){ rdTailNote(); return; }
   const c = b.chapters[idx], body = $('#rd-body'), tail = $('#rd-tail');
   if(!body || !tail) return;
+  if(b.article && !c.content){
+    if(c.url && !c.fetching && !c.error) loadArticleChapter(b, idx, () => rdAppendNext());
+    else if(c.error) rdTailNote('本章抓取失败：' + c.error);
+    return;
+  }
   rdRT.loading = true;
   rdTailNote();
   const sec = document.createElement('section');
@@ -1089,7 +1118,10 @@ function syncReaderFoot(){
       within = Math.min(1, Math.max(0, (body.scrollTop - top) / Math.max(1, s.offsetHeight)));
     }
   });
-  const foot = $('#rd-foot span'); if(foot) foot.textContent = `${cur+1}/${b.chapters.length}`;
+  const foot = $('#rd-foot span');
+  if(foot) foot.textContent = b.article
+    ? (b.chapters.length > 1 ? `${cur+1}/${b.chapters.length} · 网页章节` : (b.kind==='chapter'?'网页章节':'网页文章'))
+    : `${cur+1}/${b.chapters.length}`;
   const bar = $('#rd-prog');
   const max = body.scrollHeight - body.clientHeight;
   if(bar) bar.style.width = (max > 0 ? (body.scrollTop / max * 100) : 0).toFixed(1) + '%';
@@ -1434,6 +1466,9 @@ routes.reader = () => {
   const r = S.reader || (S.reader = {bookId:b.id, ch:0, pure:S.settings.pure, tts:false});
   const ch = Math.min(Math.max(0, r.ch||0), b.chapters.length-1);
   const c = b.chapters[ch];
+  if(art && c && c.url && !c.content && !c.fetching && !c.error){
+    setTimeout(() => loadArticleChapter(b, ch, () => {}), 0);
+  }
   const headTitle = (b.kind === 'chapter' && b.bookTitle) ? b.bookTitle : b.title;
   const th = THEMES[S.settings.theme] || THEMES.white;
   // 当前章不在已拼接的章节里（首次进入 / 目录跳章 / 上一章下一章）→ 重置连续阅读栈
@@ -1448,19 +1483,20 @@ routes.reader = () => {
     <div class="reader-head" id="rd-head">
       <button class="icon-btn" data-act="close-reader">${ic('back','ico')}</button>
       <div class="tt">${esc(headTitle)}</div>
-      ${art ? `<button class="icon-btn" data-act="open-original-article" title="打开原文">${ic('link','ico')}</button>` : `
+      ${art && b.chapters.length <= 1 ? `<button class="icon-btn" data-act="open-original-article" title="打开原文">${ic('link','ico')}</button>` : `
       <button class="icon-btn" data-act="prev-ch" title="上一章" ${ch<=0?'disabled style="opacity:.3"':''}><span style="display:inline-flex;transform:scaleX(-1)">${ic('chev','ico')}</span></button>
       <button class="icon-btn" data-act="next-ch" title="下一章" ${ch>=b.chapters.length-1?'disabled style="opacity:.3"':''}>${ic('chev','ico')}</button>
       <button class="icon-btn" data-act="open-catalog">${ic('list','ico')}</button>`}
     </div>
 
     <div class="reader-body" id="rd-body">
+      ${art && b.kind==='chapter' && b.crawl ? `<div id="rd-crawl" style="font-size:11.5px;line-height:1.6;color:#8B93A8;text-align:center;padding:2px 0 10px">${esc(crawlLabel(b))}</div>`:''}
       ${!art && !r.pure?`<div class="site-nav"><span>首页</span><span>分类</span><span>排行</span><span>搜索</span><span class="sp"></span><span class="s">站点导航</span></div>`:''}
       ${rdRT.loaded.map(i => rdChapterHTML(b, i, r)).join('')}
       ${!art && !r.pure?`<div class="site-rec"><div class="blk"></div><div><b>站点推荐位</b><br>同类作品 · 热门榜单 · 下载客户端 ›</div></div>`:''}
       <div id="rd-tail">
         <div id="rd-tail-note">${rdTailText()}</div>
-        ${art ? '' : `<div style="display:flex;gap:10px;margin-bottom:18px">
+        ${(art && b.chapters.length <= 1) ? '' : `<div style="display:flex;gap:10px;margin-bottom:18px">
           <button class="btn line" style="flex:1;background:transparent;color:${th.fg};border-color:rgba(150,150,150,.35)" data-act="prev-ch" ${rdRT.loaded[0]===0?'disabled':''}>上一章</button>
           <button class="btn line" style="flex:1;background:transparent;color:${th.fg};border-color:rgba(150,150,150,.35)" data-act="next-ch" ${rdRT.loaded[rdRT.loaded.length-1]===b.chapters.length-1?'disabled':''}>下一章</button>
         </div>`}
@@ -1468,9 +1504,9 @@ routes.reader = () => {
     </div>
 
     <div class="reader-foot" id="rd-foot">
-      <span class="${art?'art-src':''}">${art ? (b.kind==='chapter' ? '网页章节' : '网页文章') : `${ch+1}/${b.chapters.length}`}</span>
+      <span class="${art?'art-src':''}">${art ? (b.chapters.length>1 ? `${ch+1}/${b.chapters.length} · 网页章节` : (b.kind==='chapter' ? '网页章节' : '网页文章')) : `${ch+1}/${b.chapters.length}`}</span>
       <div class="progress"><i id="rd-prog"></i></div>
-      <span id="rd-pct">${art ? '0%' : pct+'%'}</span>
+      <span id="rd-pct">${art && b.chapters.length<=1 ? '0%' : pct+'%'}</span>
     </div>
 
     <div class="reader-tools" style="display:flex;align-items:center;justify-content:space-around;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:${th.bg};border-top:1px solid rgba(140,140,140,.14)">
@@ -1569,6 +1605,105 @@ function articleId(u){
 function articleCover(id){
   const h = Math.abs(hashCode(id));
   return ART_PALETTE[h % ART_PALETTE.length];
+}
+/* 整本章节正文的本地仓：按章存 IndexedDB，避免 localStorage 配额 */
+const ADB = (() => {
+  let dbp = null;
+  const open = () => {
+    if(dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      try{
+        if(!window.indexedDB) throw new Error('IndexedDB 不可用');
+        const r = indexedDB.open('yuyue.article.v1', 1);
+        r.onupgradeneeded = () => { const d = r.result; if(!d.objectStoreNames.contains('ch')) d.createObjectStore('ch'); };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error || new Error('IndexedDB 打开失败'));
+      }catch(e){ rej(e); }
+    });
+    return dbp;
+  };
+  function put(id, i, c){
+    return open().then(d => new Promise((res, rej) => {
+      const t = d.transaction('ch', 'readwrite');
+      t.objectStore('ch').put(c, id + ':' + String(i).padStart(5,'0'));
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    }));
+  }
+  function all(id){
+    return open().then(d => new Promise((res, rej) => {
+      const t = d.transaction('ch', 'readonly'), s = t.objectStore('ch'), out = [];
+      const rq = s.openCursor();
+      rq.onsuccess = () => {
+        const cur = rq.result;
+        if(!cur) return res(out);
+        if(String(cur.key).startsWith(id + ':')) out.push(cur.value);
+        cur.continue();
+      };
+      rq.onerror = () => rej(rq.error);
+    }));
+  }
+  function clear(id){
+    return open().then(d => new Promise((res, rej) => {
+      const t = d.transaction('ch', 'readwrite'), s = t.objectStore('ch');
+      const rq = s.openCursor();
+      rq.onsuccess = () => {
+        const cur = rq.result;
+        if(!cur) return;
+        if(String(cur.key).startsWith(id + ':')) cur.delete();
+        cur.continue();
+      };
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error);
+    }));
+  }
+  return { put, all, clear };
+})();
+function adbPutChapter(item, i){
+  const c = item && item.chapters && item.chapters[i];
+  if(!c || !c.content) return Promise.resolve();
+  return ADB.put(item.id, i, {
+    title:c.title, url:c.url, content:c.content,
+    chars:c.chars || 0, readMin:c.readMin || 1, error:c.error || ''
+  }).catch(() => {});
+}
+async function hydrateArticleArchive(){
+  let changed = false, resume = [];
+  for(const a of (S.articles || [])){
+    if(!a.archive) continue;
+    try{
+      const rows = await ADB.all(a.id);
+      if(!rows.length) continue;
+      rows.forEach((r, i) => {
+        if(!r) return;
+        const base = a.chapters[i] || { title:r.title || ('第' + (i + 1) + '章'), url:r.url || '' };
+        a.chapters[i] = Object.assign(base, {
+          title:r.title || base.title, url:r.url || base.url,
+          content:r.content || base.content || '',
+          chars:r.chars || base.chars || 0, readMin:r.readMin || base.readMin || 1,
+          error:r.error || ''
+        });
+      });
+      changed = true;
+    }catch(e){}
+    if(a.crawl){
+      const done = (a.chapters || []).filter(c => c.content || c.error).length;
+      a.crawl.done = done;
+      a.crawl.total = (a.chapters || []).length;
+      if(done >= a.crawl.total){ a.crawl.status = 'done'; a.crawl.error = ''; }
+      else if(a.crawl.status === 'loading' && !a._resumeStarted){
+        a._resumeStarted = true;
+        resume.push(a);
+      }
+    }
+  }
+  if(changed) save();
+  resume.forEach(a => {
+    crawlChapterBook(a, a.chapters.length > 1
+      ? { mode:'catalog' }
+      : { mode:'next', nextUrl:a.nextUrl || '' }, { via:a.via }).catch(() => {});
+  });
+  if(changed && S.view === 'reader') render();
 }
 function tidyArticleTitle(t, site){
   let s = String(t||'').replace(/\s+/g,' ').trim();
@@ -1713,7 +1848,7 @@ function extractArticle(html, pageUrl, extra){
       || findNav(/^(下一章|下一頁|下章|next(?:\s*chapter)?)$/i);
     prevUrl = meta('meta[property="og:novel:prev_chapter_url"]') || meta('meta[name="og:novel:prev_chapter_url"]')
       || findNav(/^(上一章|上一頁|上章|prev(?:\s*chapter)?)$/i);
-    catalogUrl = findNav(/^(目录|返回目录|章节目录|回目录)$/);
+    catalogUrl = findNav(/^(目录|目录页|返回目录|章节目录|回目录|返回书目|作品目录)$/);
   }
 
   /* 去掉脚本、表单、导航、页脚、广告位和推荐位 */
@@ -1871,12 +2006,244 @@ async function fetchArticleSource(url){
   };
 }
 
+/* ------------------------- 整本章节：目录识别 / 自动抓取 ------------------------- */
+const nap = ms => new Promise(r => setTimeout(r, ms));
+const CN_NUM = { 零:0, 一:1, 二:2, 两:2, 三:3, 四:4, 五:5, 六:6, 七:7, 八:8, 九:9 };
+function cnNumber(s){
+  let total = 0, section = 0, num = 0;
+  for(const ch of String(s||'')){
+    if(CN_NUM[ch] != null){ num = CN_NUM[ch]; continue; }
+    if(ch === '十'){ section += (num || 1) * 10; num = 0; }
+    else if(ch === '百'){ section += (num || 1) * 100; num = 0; }
+    else if(ch === '千'){ section += (num || 1) * 1000; num = 0; }
+    else if(ch === '万'){ total += (section + num) * 10000; section = 0; num = 0; }
+  }
+  return total + section + num;
+}
+function chapterNo(t){
+  const m = String(t||'').match(/第\s*([0-9０-９]+|[一二三四五六七八九十百千万零两]+)\s*[章节回卷]/);
+  if(!m) return null;
+  const raw = m[1].replace(/[０-９]/g, ch => String(ch.charCodeAt(0) - 65248));
+  return /^\d+$/.test(raw) ? Number(raw) : cnNumber(raw);
+}
+const urlKey = u => {
+  try{ const x = new URL(u); return (x.hostname.replace(/^www\./,'').replace(/^m\./,'') + x.pathname).replace(/\/+$/,'').toLowerCase(); }
+  catch(e){ return String(u||'').toLowerCase(); }
+};
+const chapterKey = t => String(t||'').replace(/[\s_\-—–:：·,，。!！?？'"“”‘’（）()]/g,'').toLowerCase();
+function cleanChapterLinkTitle(t){
+  return String(t||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim()
+    .replace(/\s*(免费|收费|VIP|vip|最新章节)$/,'').slice(0, 90);
+}
+function parseCatalogLinks(html, base){
+  let doc;
+  try{ doc = new DOMParser().parseFromString(String(html||''), 'text/html'); }catch(e){ return []; }
+  let host0 = '';
+  try{ host0 = new URL(base).hostname.replace(/^www\./,'').replace(/^m\./,''); }catch(e){}
+  const out = [], seen = new Set();
+  for(const a of doc.querySelectorAll('a[href]')){
+    const href = a.getAttribute('href') || '';
+    if(!href || /^(javascript:|#|mailto:)/i.test(href)) continue;
+    const t = cleanChapterLinkTitle(a.textContent);
+    if(!/^第\s*[0-9０-９一二三四五六七八九十百千万零两]+\s*[章节回卷]/.test(t)) continue;
+    let u = '';
+    try{ u = new URL(href, base).href; }catch(e){ continue; }
+    let h = '';
+    try{ h = new URL(u).hostname.replace(/^www\./,'').replace(/^m\./,''); }catch(e){}
+    if(host0 && h && h !== host0) continue;
+    const k = urlKey(u);
+    if(seen.has(k)) continue; seen.add(k);
+    out.push({ title:t, url:u, no:chapterNo(t) });
+    if(out.length > 4000) break;
+  }
+  if(out.length > 1 && out[0].no != null && out[out.length-1].no != null && out[0].no > out[out.length-1].no) out.reverse();
+  return out;
+}
+async function discoverChapterPlan(art, cu){
+  if(art.catalogUrl && urlKey(art.catalogUrl) !== urlKey(cu)){
+    try{
+      const src = await fetchArticleSource(art.catalogUrl);
+      const links = parseCatalogLinks(src.html, src.finalUrl || art.catalogUrl);
+      if(links.length > 1){
+        let idx = links.findIndex(l => urlKey(l.url) === urlKey(cu));
+        if(idx < 0) idx = links.findIndex(l => chapterKey(l.title) === chapterKey(art.title));
+        let nextIdx = art.nextUrl ? links.findIndex(l => urlKey(l.url) === urlKey(art.nextUrl)) : -1;
+        if(idx < 0 && nextIdx > 0) idx = nextIdx - 1;
+        if(idx < 0) idx = 0;
+        return { mode:'catalog', links:links.slice(idx), catalogUrl:art.catalogUrl };
+      }
+    }catch(e){}
+  }
+  return { mode:'next', nextUrl:art.nextUrl || '', catalogUrl:art.catalogUrl || '' };
+}
+function buildChapterList(art, plan, cu){
+  const first = { title:art.title, url:cu, content:art.content, chars:art.chars, readMin:art.readMin };
+  if(plan.mode === 'catalog' && plan.links && plan.links.length){
+    let chapters = plan.links.map(l => ({ title:l.title, url:l.url, content:'', chars:0, readMin:1 }));
+    if(!chapters.length || urlKey(chapters[0].url) !== urlKey(cu)){
+      chapters = chapters.filter(c => urlKey(c.url) !== urlKey(cu));
+      chapters.unshift(first);
+    }else{
+      chapters[0] = Object.assign(chapters[0], first);
+    }
+    return { chapters, multi:chapters.length > 1, mode:'catalog' };
+  }
+  return { chapters:[Object.assign({}, first, { html:art.html })], multi:!!plan.nextUrl, mode:'next' };
+}
+async function fetchChapterData(url, titleHint){
+  const src = await fetchArticleSource(url);
+  const art = extractArticle(src.html, src.finalUrl || url, { title:titleHint || '', via:src.via });
+  if(!art || art.chars < 120) throw new Error('正文太短');
+  return {
+    title:art.title, content:art.content, chars:art.chars, readMin:art.readMin,
+    finalUrl:art.finalUrl || src.finalUrl || url, nextUrl:art.nextUrl || '',
+    source:art.source, author:art.author, via:src.via
+  };
+}
+function crawlLabel(b){
+  const c = (b && b.crawl) || {};
+  const total = c.total || (b && b.chapters && b.chapters.length) || 0;
+  const done = Math.min(c.done || 0, total || 9999);
+  if(c.status === 'done') return '已补全 ' + total + ' 章';
+  if(c.status === 'stopped') return '已抓取 ' + done + ' 章 · ' + (c.error || '已停止');
+  return '正在自动抓取剩余章节 ' + done + (total ? '/' + total : '') + '…';
+}
+function updateCrawlUI(){
+  const b = book(S.bookId), el = $('#rd-crawl');
+  if(b && b.crawl && el) el.textContent = crawlLabel(b);
+}
+function maybeAppendChapter(item){
+  if(S.view !== 'reader' || S.bookId !== item.id) return;
+  const body = $('#rd-body');
+  if(!body) return;
+  if(body.scrollHeight - body.clientHeight - body.scrollTop < 480) rdAppendNext();
+}
+async function crawlChapterBook(item, plan, srcMeta){
+  const micro = !!(srcMeta && /Microlink/i.test(srcMeta.via || ''));
+  const limit = micro ? 6 : 3000;
+  let fetched = 1, fails = 0;
+  const prior = item.crawl || {};
+  item.crawl = { status:'loading', done:prior.done || 1, total:item.chapters.length || 1, error:'' };
+  save(); updateCrawlUI();
+  const finish = msg => {
+    if(item.crawl.status === 'loading') item.crawl.status = 'done';
+    item.crawl.done = (item.chapters || []).filter(c => c.content || c.error).length;
+    item.crawl.total = item.chapters.length;
+    save(); updateCrawlUI();
+    if(msg) toast(msg);
+  };
+  if(plan.mode === 'next'){
+    let next = plan.nextUrl;
+    const seen = new Set([urlKey(item.url)]);
+    while(next && item.crawl.status === 'loading' && fetched < limit){
+      if(seen.has(urlKey(next))) break;
+      seen.add(urlKey(next));
+      try{
+        const d = await fetchChapterData(next, '');
+        item.chapters.push({ title:d.title, url:d.finalUrl, content:d.content, chars:d.chars, readMin:d.readMin });
+        fetched++;
+        item.chars = (item.chars || 0) + d.chars;
+        item.readMin = Math.max(1, Math.round(item.chars / 450));
+        item.crawl.done = item.chapters.length;
+        item.crawl.total = item.chapters.length;
+        await adbPutChapter(item, item.chapters.length - 1);
+        save(); updateCrawlUI(); maybeAppendChapter(item);
+        next = d.nextUrl;
+      }catch(e){
+        item.crawl.status = 'stopped';
+        item.crawl.error = String(e && e.message || e).slice(0, 60);
+        break;
+      }
+      await nap(100);
+    }
+    if(fetched >= limit && item.crawl.status === 'loading'){
+      item.crawl.status = 'stopped';
+      item.crawl.error = '已达到公共解析抓取上限';
+    }
+    finish(item.crawl.status === 'done'
+      ? '已补全 ' + item.chapters.length + ' 章'
+      : '已抓取 ' + item.chapters.length + ' 章，后续暂时抓不动了');
+    return;
+  }
+
+  let cursor = 1;
+  const total = item.chapters.length;
+  const worker = async () => {
+    while(item.crawl.status === 'loading'){
+      if(fetched >= limit){
+        item.crawl.status = 'stopped';
+        item.crawl.error = '已达到自动抓取上限';
+        return;
+      }
+      const i = cursor++;
+      if(i >= total) return;
+      const c = item.chapters[i];
+      if(!c || c.content) continue;
+      if(c.fetching){ await nap(180); cursor = Math.min(cursor, i); continue; }
+      if(!c.url){ c.error = '本章没有地址'; continue; }
+      c.fetching = true;
+      try{
+        const d = await fetchChapterData(c.url, c.title);
+        c.title = d.title || c.title;
+        c.content = d.content; c.chars = d.chars; c.readMin = d.readMin;
+        c.url = d.finalUrl || c.url; c.error = '';
+        fetched++; fails = 0;
+        item.chars = (item.chars || 0) + d.chars;
+        item.readMin = Math.max(1, Math.round(item.chars / 450));
+        await adbPutChapter(item, i);
+        if(fetched % 20 === 0 || i === 1) save();
+        updateCrawlUI(); maybeAppendChapter(item);
+      }catch(e){
+        c.error = String(e && e.message || e).slice(0, 60);
+        fails++;
+        if(fails >= 4){
+          item.crawl.status = 'stopped';
+          item.crawl.error = '站点连续抓取失败：' + c.error;
+        }
+      }finally{
+        c.fetching = false;
+        item.crawl.done = item.chapters.filter(x => x.content || x.error).length;
+        item.crawl.total = total;
+        updateCrawlUI();
+      }
+      await nap(70);
+    }
+  };
+  const n = Math.min(4, Math.max(1, total - 1));
+  await Promise.all(new Array(n).fill(0).map(worker));
+  finish(item.crawl.status === 'done'
+    ? '已补全 ' + total + ' 章'
+    : '已抓取 ' + (item.crawl.done || 1) + ' 章，后续暂时抓不动了');
+}
+function loadArticleChapter(b, i, after){
+  const c = b && b.chapters && b.chapters[i];
+  if(!c || c.content || c.fetching) { if(after) after(); return; }
+  if(!c.url){ c.error = '本章没有地址'; if(after) after(); return; }
+  c.fetching = true;
+  c.error = '';
+  fetchChapterData(c.url, c.title).then(d => {
+    c.title = d.title || c.title;
+    c.content = d.content; c.chars = d.chars; c.readMin = d.readMin;
+    c.url = d.finalUrl || c.url;
+    b.chars = (b.chars || 0) + d.chars;
+    b.readMin = Math.max(1, Math.round(b.chars / 450));
+    adbPutChapter(b, i); save();
+    if(S.view === 'reader' && S.bookId === b.id) rdFillSection(b, i);
+  }).catch(e => {
+    c.error = String(e && e.message || e).slice(0, 60);
+  }).finally(() => {
+    c.fetching = false;
+    if(after) after();
+    if(S.view === 'reader' && S.bookId === b.id) updateCrawlUI();
+  });
+}
+
 function openArticleLink(raw){
   const url = urlInText(raw);
   if(!url) return false;
   const cu = canonUrl(url);
   const old = (S.articles||[]).find(a => a.id === articleId(cu) || a.url === cu);
-  if(old){ sessionStorage.setItem('openReaderFrom','home'); openReader(old.id, 0); return true; }
+  if(old){ sessionStorage.setItem('openReaderFrom','home'); openReader(old.id); return true; }
   articleTask = { url:cu, status:'loading', via:'', error:'' };
   S.view = 'article';
   render();
@@ -1893,23 +2260,36 @@ async function loadArticle(url){
     const art = extractArticle(src.html, src.finalUrl || cu, src);
     const id = articleId(cu);
     const isCh = art.kind === 'chapter';
+    let plan = null, built = null;
+    if(isCh){
+      plan = await discoverChapterPlan(art, cu);
+      built = buildChapterList(art, plan, cu);
+    }
+    const chapters = built ? built.chapters : [{ title:art.title, content:art.content, html:art.html }];
+    const multi = !!(built && built.multi);
     const item = {
       id, title:art.title, author:art.author || (isCh ? '' : art.source || '网页文章'),
       cat:isCh ? '网页章节' : '网页文章',
       tags:isCh ? ['网页','章节','净化'] : ['网页','净化'], cover:articleCover(id), hot:0,
       intro:(art.desc || art.content.slice(0, 100)).slice(0, 160),
-      chapters:[{ title:art.title, content:art.content, html:art.html }],
+      chapters,
       article:true, kind:art.kind, bookTitle:art.bookTitle || '',
       nextUrl:art.nextUrl || '', prevUrl:art.prevUrl || '', catalogUrl:art.catalogUrl || '',
       url:cu, source:art.source, published:art.published,
-      chars:art.chars, readMin:art.readMin, via:src.via, fetchedAt:Date.now()
+      chars:art.chars, readMin:art.readMin, via:src.via, fetchedAt:Date.now(),
+      archive:multi,
+      crawl:multi ? { status:'loading', done:1, total:chapters.length, error:'' } : null
     };
     S.articles = [item, ...(S.articles||[]).filter(a => a.id !== id)].slice(0, 8);
     articleTask = null;
     save();
     sessionStorage.setItem('openReaderFrom','home');
     openReader(id, 0);
-    toast(`已净化：${(isCh && art.bookTitle ? art.bookTitle + ' · ' : '') + art.title.slice(0, 22)} · ${art.readMin} 分钟读完`);
+    toast(`已净化：${(isCh && art.bookTitle ? art.bookTitle + ' · ' : '') + art.title.slice(0, 18)}${multi ? ' · 自动补全 ' + chapters.length + ' 章' : ''}`);
+    if(multi){
+      adbPutChapter(item, 0);
+      crawlChapterBook(item, plan, src).catch(() => {});
+    }
   }catch(e){
     articleTask = { url:cu, status:'error', via:'', error:String(e && e.message || e).slice(0, 160) };
     if(S.view === 'article') render();
@@ -1980,12 +2360,15 @@ hook('reader', () => {
     S.progress[S.bookId] = {ch: cur, ratio, ts:Date.now()};
     const bar = $('#rd-prog'); if(bar) bar.style.width = (ratio*100).toFixed(1)+'%';
     const pc = $('#rd-pct');
-    if(pc && b && b.article){
+    if(pc && b && b.article && b.chapters.length <= 1){
       pc.textContent = (ratio >= 1 ? 100 : Math.max(1, Math.round(ratio * 100))) + '%';
     } else if(pc && b && b.chapters && b.chapters.length){
       pc.textContent = Math.max(1, Math.min(100, Math.round(((cur + within) / b.chapters.length) * 100))) + '%';
     }
-    const foot = $('#rd-foot span'); if(foot) foot.textContent = b && b.article ? (b.kind==='chapter'?'网页章节':'网页文章') : `${cur+1}/${b.chapters.length}`;
+    const foot = $('#rd-foot span');
+    if(foot) foot.textContent = b && b.article
+      ? (b.chapters.length > 1 ? `${cur+1}/${b.chapters.length} · 网页章节` : (b.kind==='chapter'?'网页章节':'网页文章'))
+      : `${cur+1}/${b.chapters.length}`;
     // 快滑到本章末尾：直接把下一章接上来
     if(max - body.scrollTop < 420) rdAppendNext();
     clearTimeout(scrollTimer);
@@ -2545,9 +2928,10 @@ routes.history = () => {
         const total = (x.b.chapters||[]).length;
         const isCh = x.b.article && x.b.kind === 'chapter';
         const sub = x.b.article
-          ? `${isCh?'网页章节':'网页文章'}${x.b.chars?` · ${x.b.chars} 字`:''}`
+          ? `${isCh?'网页章节':'网页文章'}${total>1?` · ${total} 章`:''}${x.b.chars?` · ${x.b.chars} 字`:''}`
           : (total ? `读到 ${Math.min(total, x.ch+1)}/${total} 章` : '目录待加载');
-        const disp = isCh && x.b.bookTitle ? `${x.b.bookTitle} · ${x.b.title}` : x.b.title;
+        const curTitle = isCh && x.b.chapters && x.b.chapters[x.ch] ? x.b.chapters[x.ch].title : x.b.title;
+        const disp = isCh && x.b.bookTitle ? `${x.b.bookTitle} · ${curTitle}` : x.b.title;
         return `<div class="hist-row" data-act="open-book" data-id="${x.id}">
           <div class="cv" style="background:linear-gradient(150deg,${x.b.cover[0]},${x.b.cover[1]})">
             ${cs?`<img src="${cs}" alt="" loading="lazy" onerror="this.style.display='none'">`:esc(disp.slice(0,3))}
@@ -3306,8 +3690,9 @@ const ACTIONS = {
     const b = book(S.bookId); if(!b) return;
     const idx = Number(el.dataset.ch || 0), c = b.chapters[idx];
     if(!c) return;
-    c.error = ''; rdFillSection(b, idx);
-    loadChapter(b, idx, () => rdFillSection(b, idx));
+    c.error = ''; c.fetching = false; rdFillSection(b, idx);
+    if(b.article && c.url) loadArticleChapter(b, idx, () => rdFillSection(b, idx));
+    else loadChapter(b, idx, () => rdFillSection(b, idx));
   },
   'jump-ch'(el){
     const i = Number(el.dataset.ch);
@@ -3505,6 +3890,7 @@ window.addEventListener('beforeunload', ()=>{ save(); });
   if(!TABS.includes(S.view)) S.view = 'home';
   if(!TABS.includes(S.tab)) S.tab = S.view;
   render();
+  hydrateArticleArchive().catch(() => {});
   // 首次访问提示
   if(!Store.get()){
     setTimeout(()=>toast('欢迎使用愉阅 · 演示书库已就绪'), 600);
