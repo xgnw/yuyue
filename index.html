@@ -1886,7 +1886,7 @@ function extractArticle(html, pageUrl, extra){
   const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
   const BLOCK = new Set(['P','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','LI','PRE','FIGCAPTION','DD','DT']);
   const JUNK = /^(广告|赞助|推广|相关阅读|相关文章|推荐阅读|热门推荐|猜你喜欢|扫码|长按|关注|点击|登录|注册|下载|分享|收藏|点赞|评论|上一篇|下一篇|上一章|下一章|返回|目录|返回目录|章节目录|首页|更多|版权|免责声明|本文来源|责任编辑|编辑\s*[:：]|作者\s*[:：]|撰文\s*[:：]|文\s*[:：]|日期\s*[:：]|发布时间\s*[:：]|更新时间\s*[:：]|来源\s*[:：]|阅读\s*[:：]|字数\s*[:：]|最新网址|手机阅读|登陆注册|登录注册|分类书库|章节报错|投推荐票|月票|打赏|.+?\s*[-–—]\s*(小说|文学|阅读|读书|书库)$)/;
-  const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址)/i;
+  const PROMO = /(免费小说|无弹窗|最新网址|请收藏|加入书签|手机阅读|扫码|本章未完|点击下一页|继续阅读|首发地址|永久地址|关注公众号|下载\s*APP|最新章节|笔趣|小说网|阅读网|域名|网址|上一页|下一页|上一章|下一章|返回目录|目录页|章节目录)/i;
   const blocks = [], seenImg = new Set();
   const clean = t => String(t||'').replace(/\u00a0/g,' ').replace(/\r/g,'')
     .split('\n').map(x => x.replace(/\s+/g,' ').trim()).filter(Boolean);
@@ -2160,9 +2160,9 @@ async function crawlChapterBook(item, plan, srcMeta){
       item.crawl.status = 'stopped';
       item.crawl.error = '已达到公共解析抓取上限';
     }
-    finish(item.crawl.status === 'done'
-      ? '已补全 ' + item.chapters.length + ' 章'
-      : '已抓取 ' + item.chapters.length + ' 章，后续暂时抓不动了');
+    finish(item.crawl.status === 'stopped'
+      ? '已抓取 ' + item.chapters.length + ' 章，后续暂时抓不动了'
+      : '已补全 ' + item.chapters.length + ' 章');
     return;
   }
 
@@ -2211,9 +2211,9 @@ async function crawlChapterBook(item, plan, srcMeta){
   };
   const n = Math.min(4, Math.max(1, total - 1));
   await Promise.all(new Array(n).fill(0).map(worker));
-  finish(item.crawl.status === 'done'
-    ? '已补全 ' + total + ' 章'
-    : '已抓取 ' + (item.crawl.done || 1) + ' 章，后续暂时抓不动了');
+  finish(item.crawl.status === 'stopped'
+    ? '已抓取 ' + (item.crawl.done || 1) + ' 章，后续暂时抓不动了'
+    : '已补全 ' + total + ' 章');
 }
 function loadArticleChapter(b, i, after){
   const c = b && b.chapters && b.chapters[i];
@@ -3899,3 +3899,6 @@ window.addEventListener('beforeunload', ()=>{ save(); });
 </script>
 </body>
 </html>
+
+
+
