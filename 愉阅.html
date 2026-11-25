@@ -620,7 +620,7 @@ body.dark .art-url{color:#8A93AB}
   .detail-actions .btn{white-space:nowrap;min-width:0}
 
   .reader-head{margin:0 auto;width:var(--desk-w);padding:14px 24px 10px}
-  .reader-body{margin:0 auto;width:min(780px,var(--desk-w));padding:34px 42px 64px}
+  .reader-body{margin:0 auto;width:min(1180px,calc(var(--desk-w) * .85));padding:34px 48px 64px}
   .reader-body .ch-title{font-size:calc(var(--fs) + 6px);margin:8px 0 26px}
   .reader-body p{margin-bottom:calc(var(--lh) * 1.05em)}
   .reader-foot{margin:0 auto;width:var(--desk-w);padding:10px 24px calc(16px + var(--safe-b))}
@@ -630,6 +630,29 @@ body.dark .art-url{color:#8A93AB}
     border-radius:20px;transform:translate(-50%,110%);max-height:70%;
   }
   .sheet.show{transform:translate(-50%,0)}
+  #sheet-settings{
+    left:50%;right:auto;top:50%;bottom:auto;
+    width:min(780px,calc(100% - 96px));max-height:min(680px,calc(100vh - 64px));
+    padding:22px 30px 24px;border-radius:22px;
+    display:grid;grid-template-columns:1fr 1fr;column-gap:30px;align-content:start;
+    transform:translate(-50%,-44%) scale(.985);opacity:0;pointer-events:none;
+    transition:opacity .18s ease,transform .22s cubic-bezier(.2,.8,.2,1);
+  }
+  #sheet-settings.show{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto}
+  #sheet-settings .grab{display:none}
+  #sheet-settings h3{grid-column:1/-1;margin:0 0 6px;padding-bottom:10px;font-size:18px;border-bottom:1px solid var(--line)}
+  #sheet-settings h3 .close{font-size:13px;font-weight:600;padding:6px 13px;border-radius:9px;background:#F2F4FA;color:#5C6480}
+  #sheet-settings .setting-row{padding:15px 0;font-size:14px;border-bottom:1px solid var(--line)}
+  #sheet-settings .setting-row .lab{width:56px;font-size:13px}
+  #sheet-settings .rd-span{grid-column:1/-1}
+  #sheet-settings .stepper{height:40px;max-width:280px}
+  #sheet-settings .range{height:30px}
+  #sheet-settings .theme-row{margin-top:0}
+  #sheet-settings .theme-row .th{height:44px}
+  #sheet-settings .tts-bar{grid-column:1/-1;margin-top:18px;padding:14px 16px}
+  .reader.rd-night #sheet-settings h3{border-color:#2A2F40}
+  .reader.rd-night #sheet-settings .setting-row{border-color:#2A2F40}
+  .reader.rd-night #sheet-settings h3 .close{background:#222635;color:#9AA3BC}
   .modal{max-width:420px;padding:24px}
   .drawer .panel{width:360px}
   .toast{bottom:96px;max-width:520px}
@@ -1108,27 +1131,27 @@ routes.reader = () => {
     <div class="sheet" id="sheet-settings">
       <div class="grab"></div>
       <h3>阅读设置 <button class="close" data-act="close-settings">完成</button></h3>
-      <div class="setting-row">
+      <div class="setting-row rd-span">
         <span class="lab">亮度</span>
         <input class="range" type="range" min="30" max="100" value="${S.settings.bright}" data-act="set-bright">
         <span style="width:40px;text-align:right;font-size:12px;color:#8B93A8">${S.settings.bright}%</span>
       </div>
-      <div class="setting-row">
+      <div class="setting-row rd-half">
         <span class="lab">字号</span>
         <div class="stepper"><button data-act="fs" data-d="-1">−</button><span class="v">${S.settings.fontSize}</span><button data-act="fs" data-d="1">+</button></div>
       </div>
-      <div class="setting-row">
+      <div class="setting-row rd-half">
         <span class="lab">行距</span>
         <div class="stepper"><button data-act="lh" data-d="-0.05">−</button><span class="v">${S.settings.lineHeight.toFixed(2)}</span><button data-act="lh" data-d="0.05">+</button></div>
       </div>
-      <div class="setting-row" style="padding-bottom:2px">
+      <div class="setting-row rd-span">
         <span class="lab">背景</span>
         <div class="theme-row" style="flex:1">
           ${[['white','白'],['paper','纸'],['green','护眼'],['night','夜']].map(([k,n])=>`
             <button class="th ${S.settings.theme===k?'on':''}" data-th="${k}" data-act="set-theme">${n}</button>`).join('')}
         </div>
       </div>
-      <div class="tts-bar ${tts.playing?'':'paused'}">
+      <div class="tts-bar rd-span ${tts.playing?'':'paused'}">
         <div class="wave"><i></i><i></i><i></i><i></i></div>
         <div style="flex:1">
           <div style="font-size:12.5px;font-weight:700">听书 · ${S.settings.rate}x</div>
