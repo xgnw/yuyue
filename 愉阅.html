@@ -2308,7 +2308,7 @@ routes.search = () => {
   const hl = t => esc(t).replace(new RegExp(esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'), m=>`<em>${m}</em>`);
   return `
   <div class="bar solid">
-    <button class="icon-btn" data-act="go-home">${ic('back','ico')}</button>
+    <button class="icon-btn" data-act="search-back">${ic('back','ico')}</button>
     <div class="searchbar" style="flex:1;height:42px">
       ${ic('search','ico sm')}
       <input id="q" value="${esc(q)}" placeholder="搜书名、作者，或粘贴文章 / 章节链接">
@@ -2842,6 +2842,7 @@ function doSearch(q){
   const kw = (q ?? $('#q')?.value ?? '').trim();
   if(!kw){ toast('先输入书名、作者或关键词'); return; }
   if(/^https?:\/\//i.test(kw) && openArticleLink(kw)) return;
+  if(S.view !== 'search') S.searchFrom = S.view;
   S.query = kw;
   S.searchHistory = [kw, ...(S.searchHistory||[]).filter(x=>x!==kw)].slice(0,8);
   S.view = 'search'; save(); render();
@@ -2919,7 +2920,8 @@ const ACTIONS = {
   'rank-cat'(el){ S.rankCat = el.dataset.cat; save(); render(); },
   'do-search'(){ doSearch(); },
   'quick-search'(el){ doSearch(el.dataset.q); },
-  'go-home'(){ S.view = 'home'; save(); render(); },
+  'go-home'(){ S.view = 'home'; S.tab = 'home'; save(); render(); },
+  'search-back'(){ S.view = S.searchFrom || 'home'; if(S.view === 'me' || S.view === 'home') S.tab = S.view; save(); render(); },
   'article-cancel'(){ articleTask = null; S.view = 'home'; render(); },
   'article-retry'(){ if(articleTask && articleTask.url) loadArticle(articleTask.url); },
   'open-original'(el){
@@ -2931,8 +2933,8 @@ const ACTIONS = {
     if(b && b.url) window.open(b.url, '_blank', 'noopener');
     else toast('没有记录原文地址');
   },
-  'go-search'(){ S.view = 'search'; save(); render(); },
-  'go-search-list'(){ S.query = ''; S.view = 'search'; save(); render(); },
+  'go-search'(){ if(S.view !== 'search') S.searchFrom = S.view; S.view = 'search'; save(); render(); },
+  'go-search-list'(){ if(S.view !== 'search') S.searchFrom = S.view; S.query = ''; S.view = 'search'; save(); render(); },
   'go-history'(){ S.view = 'history'; save(); render(); },
   'go-shelf'(){ S.view = 'shelf'; save(); render(); },
   'go-me'(){ S.view = 'me'; S.tab = 'me'; save(); render(); },
