@@ -2495,12 +2495,13 @@ async function saveChapterSiteSource(art, cu){
     const u = new URL(cu);
     const origin = u.origin;
     const host = u.hostname.replace(/^www\./,'');
-    let list = LIVE.srcList;
-    if(!list){
+    const same = s => { try{ return new URL(s.url).origin === origin; }catch(e){ return false; } };
+    let list = LIVE.srcList || [];
+    // 缓存里没命中就再拉一次，避免别的标签页刚导入的完整源被这份轻量站点源覆盖
+    if(!list.some(same)){
       const d = await api('/api/sources');
       list = LIVE.srcList = d.list || [];
     }
-    const same = s => { try{ return new URL(s.url).origin === origin; }catch(e){ return false; } };
     if(list.some(same)) return false;
     const src = {
       bookSourceName: host + ' · 自建',
