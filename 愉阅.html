@@ -31,6 +31,7 @@
   --shadow-sm:0 2px 10px rgba(23,38,90,.05);
   --nav-h:64px;
   --safe-b:env(safe-area-inset-bottom, 0px);
+  --desk-w:min(1040px,calc(100% - 200px));
   font-synthesis-weight:none;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -332,6 +333,11 @@ body.dark .notice .nd{color:#A7AEC4}
 
 .setting-row{display:flex;align-items:center;gap:12px;padding:11px 0;font-size:13px;color:#4C5468}
 .setting-row .lab{width:38px;flex:none;color:#8B93A8}
+.setting-row.desk-only{display:none}
+.setting-row.desk-only .lab{width:auto;min-width:72px}
+.setting-row.desk-only .theme-row{margin-top:0}
+.setting-row.desk-only .th{height:36px;background:#F2F4FA;color:#5C6480}
+.setting-row.desk-only .th.on{background:var(--brand-soft);border-color:var(--brand);color:#274AFF;font-weight:700}
 .stepper{display:flex;align-items:center;gap:0;background:#F2F4FA;border-radius:10px;height:34px;flex:1}
 .stepper button{width:40px;height:100%;font-size:18px;color:#6B7490}
 .stepper .v{flex:1;text-align:center;font-size:13px;font-weight:700;color:#2C3450}
@@ -551,6 +557,7 @@ body.dark .art-url{color:#8A93AB}
    - 底部两个 tab 收成居中的悬浮 dock，不再铺满整个宽度
    ========================================================================== */
 @media (min-width:900px){
+  .setting-row.desk-only{display:flex}
   body{display:block;padding:0;overflow:hidden}
   .app{
     max-width:none;width:100%;height:100vh;min-height:0;
@@ -561,7 +568,7 @@ body.dark .art-url{color:#8A93AB}
   .scroll::-webkit-scrollbar-thumb{background:#C9D3EA;border-radius:8px}
   .scroll::-webkit-scrollbar-track{background:transparent}
 
-  .home-head{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:26px 36px 0}
+  .home-head{margin:0 auto;width:var(--desk-w);padding:26px 36px 0}
   .brandline{margin-bottom:18px}
   .logo{width:38px;height:38px;border-radius:11px;font-size:18px}
   .brandline .name{font-size:22px}
@@ -569,17 +576,17 @@ body.dark .art-url{color:#8A93AB}
   .searchbar{height:54px;max-width:100%;border-radius:16px;padding:0 8px 0 18px}
   .searchbar input{font-size:15px}
   .searchbar .go{height:40px;padding:0 20px;border-radius:12px}
-  .pad{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:0 36px}
-  .home-body{max-width:1040px;width:min(1040px,calc(100% - 200px))}
+  .pad{margin:0 auto;width:var(--desk-w);padding:0 36px}
+  .home-body{width:var(--desk-w)}
   .sect{margin-top:30px}
   .sect-head h3{font-size:17px}
   .home-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 20px}
   .home-grid .nm{font-size:13.5px}
   .home-grid .pg{font-size:11.5px}
-  .shelf-head{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:22px 36px 10px}
-  .shelf-grid{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 20px;padding:8px 36px 20px}
+  .shelf-head{margin:0 auto;width:var(--desk-w);padding:22px 36px 10px}
+  .shelf-grid{margin:0 auto;width:var(--desk-w);grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 20px;padding:8px 36px 20px}
 
-  .bar{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:14px 36px 12px}
+  .bar{margin:0 auto;width:var(--desk-w);padding:14px 36px 12px}
   .bar .searchbar{max-width:100%;height:46px}
   .tabbar{
     position:absolute;left:24px;right:auto;top:50%;bottom:auto;transform:translateY(-50%);
@@ -601,22 +608,22 @@ body.dark .art-url{color:#8A93AB}
   .src-list .src-row{margin-bottom:0}
   .rank-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 18px}
 
-  .src-page{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px))}
-  .me-hero{max-width:1040px;margin:24px auto 0;width:min(1040px,calc(100% - 200px));border-radius:24px;padding:24px 28px}
-  .me-list{max-width:1040px;margin:16px auto 0;width:min(1040px,calc(100% - 200px))}
+  .src-page{margin:0 auto;width:var(--desk-w)}
+  .me-hero{margin:24px auto 0;width:var(--desk-w);border-radius:24px;padding:24px 28px}
+  .me-list{margin:16px auto 0;width:var(--desk-w)}
   .me-stats b{font-size:22px}
-  .settings-page{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px))}
+  .settings-page{margin:0 auto;width:var(--desk-w)}
   .settings-page .me-list{width:100%;max-width:none;margin:14px 0 0}
-  .detail-hero{max-width:1040px;margin:18px auto 0;border-radius:22px;padding:24px 30px 28px}
-  .detail-body{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:24px 0}
-  .detail-actions{width:min(1040px,calc(100% - 72px));margin:0 auto;padding:12px 0 calc(12px + var(--safe-b))}
+  .detail-hero{width:var(--desk-w);margin:18px auto 0;border-radius:22px;padding:24px 30px 28px}
+  .detail-body{margin:0 auto;width:var(--desk-w);padding:24px 0}
+  .detail-actions{width:var(--desk-w);margin:0 auto;padding:12px 0 calc(12px + var(--safe-b))}
   .detail-actions .btn{white-space:nowrap;min-width:0}
 
-  .reader-head{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:14px 24px 10px}
-  .reader-body{max-width:780px;margin:0 auto;width:100%;padding:34px 42px 64px}
+  .reader-head{margin:0 auto;width:var(--desk-w);padding:14px 24px 10px}
+  .reader-body{margin:0 auto;width:min(780px,var(--desk-w));padding:34px 42px 64px}
   .reader-body .ch-title{font-size:calc(var(--fs) + 6px);margin:8px 0 26px}
   .reader-body p{margin-bottom:calc(var(--lh) * 1.05em)}
-  .reader-foot{max-width:1040px;margin:0 auto;width:min(1040px,calc(100% - 200px));padding:10px 24px calc(16px + var(--safe-b))}
+  .reader-foot{margin:0 auto;width:var(--desk-w);padding:10px 24px calc(16px + var(--safe-b))}
   .reader-tools{padding-left:max(24px,calc(50% - 390px))!important;padding-right:max(24px,calc(50% - 390px))!important}
   .sheet{
     left:50%;right:auto;width:min(560px,calc(100% - 48px));bottom:24px;
@@ -792,7 +799,7 @@ function defaultState(){
     shelf:[],                      // [{id, group, addedAt}]
     progress:{},                   // {bookId:{ch, ratio, ts}}
     readSeconds:0,
-    settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1 },
+    settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1, deskWidth:0 },
     searchHistory:[],
     history:[],                    // 浏览历史 [{id, ch, ts}]
     articles:[],                   // 粘贴链接净化后的网页文章（只留最近 8 篇，正文在本机）
@@ -923,6 +930,14 @@ function hook(view, fn){ (viewHooks[view] = viewHooks[view]||[]).push(fn); }
 /* 全局设置：夜间模式（阅读器主题独立，不在此处） */
 function applyFontPrefs(){
   document.body.classList.toggle('dark', !!S.settings.dark);
+  const dw = Number(S.settings.deskWidth || 0);
+  const root = document.documentElement;
+  if(dw){
+    const pct = Math.max(60, Math.min(100, dw)) / 100;
+    root.style.setProperty('--desk-w', `min(calc(100vw - 200px), max(720px, calc(100vw * ${pct})))`);
+  } else {
+    root.style.removeProperty('--desk-w');
+  }
 }
 
 /* ==========================================================================
@@ -2694,6 +2709,13 @@ routes.settings = () => `
           <button class="th ${S.settings.theme===k?'on':''}" data-th="${k}" data-act="set-theme">${n}</button>`).join('')}
         </div>
       </div>
+      <div class="setting-row desk-only">
+        <span class="lab">桌面宽度</span>
+        <div class="theme-row" style="flex:1">
+          ${[[0,'自动'],[60,'60%'],[70,'70%'],[80,'80%'],[90,'90%'],[100,'100%']].map(([k,n])=>`
+          <button class="th ${Number(S.settings.deskWidth||0)===k?'on':''}" data-w="${k}" data-act="set-desk-width">${n}</button>`).join('')}
+        </div>
+      </div>
     </div>
 
     <div class="me-list" style="margin-top:14px">
@@ -3037,6 +3059,10 @@ const ACTIONS = {
       $$('.theme-row .th').forEach(b=>b.classList.toggle('on', b.dataset.th === S.settings.theme));
     } else render();
   },
+  'set-desk-width'(el){
+    S.settings.deskWidth = Number(el.dataset.w) || 0;
+    save(); applyFontPrefs(); render();
+  },
   'fs'(el){
     const d = Number(el.dataset.d);
     S.settings.fontSize = Math.min(32, Math.max(13, S.settings.fontSize + d));
@@ -3217,4 +3243,5 @@ window.addEventListener('beforeunload', ()=>{ save(); });
 </script>
 </body>
 </html>
+
 
