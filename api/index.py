@@ -193,15 +193,17 @@ def health():
 
 @app.route('/api/sources')
 def api_sources():
-    rank = {'ok': 0, 'untested': 1, 'part': 2, 'dead': 3}
-    arr = sorted(sources(), key=lambda s: (rank.get(s.get('_status'), 4), s.get('bookSourceName') or ''))
+    rank = {'ok': 0, 'untested': 1, 'part': 2, 'direct': 3, 'dead': 4}
+    arr = sorted(sources(), key=lambda s: (rank.get(('direct' if s.get('yuyueDirect') else s.get('_status')), 5), s.get('bookSourceName') or ''))
     out = []
     for s in arr:
         a = s.get('_audit') or {}
         out.append({'id': s['_id'], 'name': disp(s.get('bookSourceName')), 'group': s.get('bookSourceGroup'),
                     'url': s.get('bookSourceUrl'),
                     'host': S.norm_base(s), 'enabled': bool(s.get('enabled')),
-                    'status': s.get('_status', 'untested'), 'ms': a.get('ms'), 'count': a.get('search'),
+                    'status': 'direct' if s.get('yuyueDirect') else s.get('_status', 'untested'),
+                    'direct': s.get('yuyueDirect') or '',
+                    'ms': a.get('ms'), 'count': a.get('search'),
                     'toc': a.get('toc'), 'chars': a.get('content'), 'sample': a.get('sample')})
     return jsonify({'total': len(out), 'list': out})
 
@@ -222,6 +224,9 @@ def api_test():
     s = get_src(b.get('id'))
     if not s:
         return jsonify({'error': 'not found'}), 404
+    if s.get('yuyueDirect'):
+        return jsonify({'ok': True, 'count': 0, 'status': 'direct',
+                        'err': '站点源不参与搜索，点「打开」直达保存的章节'})
     t0 = time.time()
     try:
         rs = S.search(s, b.get('key') or '剑来', 1, timeout=10)
@@ -323,7 +328,7 @@ def api_import():
         x['_id'] = src_id(x)
     _STATE['sources'] = cur + keep
     SLIM = ('bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'bookSourceType', 'header', 'enabled',
-            'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent')
+            'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent', 'yuyueDirect')
     imported = [{k: x[k] for k in SLIM if k in x} for x in keep]
     return jsonify({'added': len(keep), 'total': len(_STATE['sources']), 'skippedJs': js, 'imported': imported})
 

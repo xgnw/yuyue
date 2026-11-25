@@ -22,7 +22,8 @@
       bookSourceName: s.bookSourceName, bookSourceUrl: s.bookSourceUrl, bookSourceGroup: s.bookSourceGroup,
       bookSourceType: s.bookSourceType, header: s.header,
       enabled: s.enabled !== false, searchUrl: s.searchUrl,
-      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent
+      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent,
+      yuyueDirect: s.yuyueDirect
     }));
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(slim)); } catch (e) { /* 超限就只保留本次会话 */ }
   }
