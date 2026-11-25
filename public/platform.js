@@ -32,7 +32,8 @@
       bookSourceName: s.bookSourceName, bookSourceUrl: s.bookSourceUrl, bookSourceGroup: s.bookSourceGroup,
       bookSourceType: s.bookSourceType, header: s.header,
       enabled: s.enabled !== false, searchUrl: s.searchUrl,
-      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent
+      ruleSearch: s.ruleSearch, ruleBookInfo: s.ruleBookInfo, ruleToc: s.ruleToc, ruleContent: s.ruleContent,
+      yuyueDirect: s.yuyueDirect
     }));
     try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(slim)); } catch (e) { /* 超限就只保留本次会话 */ }
   }
@@ -115,7 +116,8 @@
         id: s._id, name: ShuyeEngine.disp(s.bookSourceName), group: s.bookSourceGroup,
         url: s.bookSourceUrl,
         host: ShuyeEngine.baseUrl(s).replace(/^https?:\/\//, ''),
-        enabled: s.enabled !== false, status: s._status || 'untested',
+        enabled: s.enabled !== false, status: s.yuyueDirect ? 'direct' : (s._status || 'untested'),
+        direct: s.yuyueDirect || '',
         ms: s._audit && s._audit.ms, count: s._audit && s._audit.search,
         toc: s._audit && s._audit.toc, chars: s._audit && s._audit.content,
         sample: s._audit && s._audit.sample
@@ -161,6 +163,7 @@
       await ensure();
       const s = ShuyeEngine.byId(body.id);
       if (!s) throw new Error('书源不存在');
+      if (s.yuyueDirect) return { ok: true, count: 0, status: 'direct', err: '站点源不参与搜索，点「打开」直达保存的章节' };
       const t0 = performance.now();
       try {
         const rs = await ShuyeEngine.searchOne(s, body.key || '剑来', 1);
@@ -235,7 +238,7 @@
       // 导出「当前生效」的整份列表（内置 + 导入 - 删除），拿去合并进仓库 sources.json
       await ensure();
       const KEEP = ['bookSourceName', 'bookSourceUrl', 'bookSourceGroup', 'bookSourceType',
-        'enabled', 'header', 'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent'];
+        'enabled', 'header', 'searchUrl', 'ruleSearch', 'ruleBookInfo', 'ruleToc', 'ruleContent', 'yuyueDirect'];
       const list = ShuyeEngine.sources.map(s => {
         const o = {};
         KEEP.forEach(k => { if (s[k] !== undefined && s[k] !== '' && s[k] !== null) o[k] = s[k]; });

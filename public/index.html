@@ -750,7 +750,7 @@ function defaultState(){
     shelf:[],                      // [{id, group, addedAt}]
     progress:{},                   // {bookId:{ch, ratio, ts}}
     readSeconds:0,
-    settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1 },
+    settings:{ fontSize:19, lineHeight:1.95, theme:'white', bright:100, pure:true, dark:false, rate:1, autoSource:true },
     searchHistory:[],
     history:[],                    // 浏览历史 [{id, ch, ts}]，最近打开的在前
     articles:[],                   // 粘贴链接净化后的网页文章（只留最近 8 篇，正文在本机）
@@ -1912,6 +1912,19 @@ function extractArticle(html, pageUrl, extra){
   cands.sort((a,b) => b.score - a.score);
   let root = cands.length ? cands[0].el : doc.body;
   if(!root) throw new Error('这个页面没有可读取的正文');
+  /* 给正文容器算一个引擎能用的选择器，供「净化时存站点源」复用 */
+  function contentSelOf(el){
+    if(!el || el === doc.body) return '';
+    if(el.id && /^[A-Za-z][\w-]*$/.test(el.id)) return '#' + el.id;
+    const tag = el.tagName.toLowerCase();
+    const cls = (el.getAttribute('class') || '').split(/\s+/).filter(c => /^[A-Za-z][\w-]*$/.test(c));
+    for(const c of cls.slice(0, 3)){
+      const sel = tag + '.' + c;
+      try{ if(doc.querySelectorAll(sel).length === 1) return sel; }catch(e){}
+    }
+    return tag;
+  }
+  const contentSel = contentSelOf(root);
 
   /* 正文按块重排：段落 / 小标题 / 引用 / 列表 / 图片，其他标签只取文字 */
   const SKIP = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','FORM','SVG','BUTTON','INPUT','SELECT','TEXTAREA','NAV','HEADER','FOOTER','ASIDE','VIDEO','AUDIO','CANVAS']);
@@ -2004,6 +2017,7 @@ function extractArticle(html, pageUrl, extra){
     nextUrl: chapterMode ? nextUrl : '',
     prevUrl: chapterMode ? prevUrl : '',
     catalogUrl: chapterMode ? catalogUrl : '',
+    contentSel: chapterMode ? contentSel : '',
     content, html: htmlOut,
     finalUrl, blocks: blocks.length,
     chars: content.replace(/\s/g,'').length,
@@ -2472,6 +2486,41 @@ function openArticleLink(raw){
   return true;
 }
 
+/* 净化章节时，顺手把站点记成「站点源」：
+   - 只存正文容器和直达章节，不参与搜索（这个站搜索要登录，云端造不出可搜索源）
+   - 同一个站点只存一次，已有造源/导入源就跳过，避免把完整源降级 */
+async function saveChapterSiteSource(art, cu){
+  if(!art || !art.contentSel || !/^https?:/i.test(cu)) return false;
+  try{
+    const u = new URL(cu);
+    const origin = u.origin;
+    const host = u.hostname.replace(/^www\./,'');
+    let list = LIVE.srcList;
+    if(!list){
+      const d = await api('/api/sources');
+      list = LIVE.srcList = d.list || [];
+    }
+    const same = s => { try{ return new URL(s.url).origin === origin; }catch(e){ return false; } };
+    if(list.some(same)) return false;
+    const src = {
+      bookSourceName: host + ' · 自建',
+      bookSourceUrl: origin,
+      bookSourceGroup: '自建',
+      bookSourceType: 0,
+      enabled: true,
+      searchUrl: '',
+      ruleSearch: {},
+      ruleBookInfo: { name: 'meta[property="og:novel:book_name"]@content||h1@text' },
+      ruleToc: {},
+      ruleContent: { content: art.contentSel + '@textNodes' },
+      yuyueDirect: cu
+    };
+    await api('/api/sources/import', { method:'POST', body:{ json:[src] } });
+    LIVE.srcList = null;
+    return true;
+  }catch(e){ return false; }
+}
+
 async function loadArticle(url){
   const cu = canonUrl(url);
   articleTask = { url:cu, status:'loading', via:'', error:'' };
@@ -2503,11 +2552,12 @@ async function loadArticle(url){
       crawl:multi ? { status:'loading', done:1, total:chapters.length, error:'' } : null
     };
     S.articles = [item, ...(S.articles||[]).filter(a => a.id !== id)].slice(0, 8);
+    const savedSite = (isCh && S.settings.autoSource !== false) ? await saveChapterSiteSource(art, cu) : false;
     articleTask = null;
     save();
     sessionStorage.setItem('openReaderFrom','home');
     openReader(id, 0);
-    toast(`已净化：${(isCh && art.bookTitle ? art.bookTitle + ' · ' : '') + art.title.slice(0, 18)}${multi ? ' · 自动补全 ' + chapters.length + ' 章' : ''}`);
+    toast(`已净化：${(isCh && art.bookTitle ? art.bookTitle + ' · ' : '') + art.title.slice(0, 18)}${multi ? ' · 自动补全 ' + chapters.length + ' 章' : ''}${savedSite ? ' · 已存站点源' : ''}`);
     if(multi){
       adbPutChapter(item, 0);
       crawlChapterBook(item, plan, src).catch(() => {});
@@ -3244,6 +3294,11 @@ routes.me = () => {
         <button class="switch ${S.settings.pure?'on':''}" data-act="toggle-pure-setting"><i></i></button>
       </div>
       <div class="me-row">
+        <div class="ic">${ic('link','ico')}</div>
+        <div class="tx"><div>净化时存站点源</div><div class="s">章节净化后把该站记进书源管理，点「打开」可直接回到这一章</div></div>
+        <button class="switch ${S.settings.autoSource!==false?'on':''}" data-act="toggle-auto-source"><i></i></button>
+      </div>
+      <div class="me-row">
         <div class="ic">${ic('sun','ico')}</div>
         <div class="tx"><div>夜间模式</div><div class="s">仅作用于界面，阅读器主题独立</div></div>
         <button class="switch ${S.settings.dark?'on':''}" data-act="toggle-dark"><i></i></button>
@@ -3301,6 +3356,11 @@ routes.settings = () => `
         <button class="switch ${S.settings.pure?'on':''}" data-act="toggle-pure-setting"><i></i></button>
       </div>
       <div class="me-row">
+        <div class="ic">${ic('link','ico')}</div>
+        <div class="tx"><div>净化时存站点源</div><div class="s">章节净化后把该站记进书源管理，点「打开」可直接回到这一章</div></div>
+        <button class="switch ${S.settings.autoSource!==false?'on':''}" data-act="toggle-auto-source"><i></i></button>
+      </div>
+      <div class="me-row">
         <div class="ic">${ic('sun','ico')}</div>
         <div class="tx"><div>界面夜间模式</div></div>
         <button class="switch ${S.settings.dark?'on':''}" data-act="toggle-dark"><i></i></button>
@@ -3343,6 +3403,7 @@ routes.sources = () => {
   const L = LIVE.srcList || [];
   const cnt = k => k==='all' ? L.length
     : k==='custom' ? L.filter(x=>x.group==='自建').length
+    : k==='direct' ? L.filter(x=>x.status==='direct').length
     : L.filter(x=>x.status===k).length;
   const f = LIVE.srcFilter;
   const q = String(LIVE.srcQuery||'').trim().toLowerCase();
@@ -3350,9 +3411,10 @@ routes.sources = () => {
     const hit = !q || [x.name, x.group, x.host, x.url].some(v => String(v||'').toLowerCase().includes(q));
     return hit && (f==='all' || (f==='custom' ? x.group==='自建' : x.status===f));
   }).slice(0, 400);
-  const FILTERS = [['ok','可用'],['part','仅搜索'],['dead','失效'],['untested','未测'],['custom','自建'],['all','全部']];
+  const FILTERS = [['ok','可用'],['part','仅搜索'],['direct','站点'],['dead','失效'],['untested','未测'],['custom','自建'],['all','全部']];
   const badge = s => s==='ok' ? '<span class="st" style="background:#E8F7EE;color:#1E874B">全链路</span>'
     : s==='part' ? '<span class="st" style="background:#FFF4E2;color:#B4791C">仅搜索</span>'
+    : s==='direct' ? '<span class="st" style="background:#EAF2FF;color:#2C6BCB">站点直达</span>'
     : s==='dead' ? '<span class="st" style="background:#FDECEC;color:#C0392B">失效</span>'
     : '<span class="st" style="background:#EEF1F8;color:#7C8399">未测</span>';
   return `
@@ -3375,6 +3437,7 @@ routes.sources = () => {
       导入格式为阅读(Legado)书源合集：<code>[{bookSourceName, bookSourceUrl, searchUrl, ruleSearch…}]</code>。
       含 @js / @webview / 需登录的书源云端跑不了，导入时会自动跳过。
       点「造源」可以直接粘贴小说详情页链接，自动识别目录/正文/搜索并生成书源。
+      粘贴章节链接净化时，会把该站顺手存成「站点源」（蓝色「站点直达」），只用于点「打开」回到原章，不参与搜索。
       「导出」得到的是当前生效的整份清单，可合并进仓库让所有设备共用。
     </div>
     <div class="card" style="padding:14px;margin-top:12px;font-size:11.5px;color:var(--muted);line-height:1.8">
@@ -3385,7 +3448,7 @@ routes.sources = () => {
       ${FILTERS.map(([k,n])=>`<button class="r ${f===k?'on':''}" data-act="src-filter" data-k="${k}">${n} ${cnt(k)}</button>`).join('')}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;padding:0 2px 8px;flex-wrap:wrap">
-      <button class="btn ghost" style="height:30px;font-size:11.5px" data-act="test-all">${ic('check','ico sm')} ${LIVE.testing?'停止测试':`测试全部 ${L.length} 个`}</button>
+      <button class="btn ghost" style="height:30px;font-size:11.5px" data-act="test-all">${ic('check','ico sm')} ${LIVE.testing?'停止测试':`测试全部 ${L.filter(x=>!x.direct).length} 个`}</button>
       ${cnt('dead') ? `<button class="btn ghost" style="height:30px;font-size:11.5px" data-act="purge-dead">${ic('trash','ico sm')} 清理失效 ${cnt('dead')} 个</button>` : ''}
     </div>
     ${LIVE.testing?`<div style="font-size:11px;color:var(--muted);padding:0 2px 10px;text-align:right;line-height:1.7">
@@ -3400,9 +3463,11 @@ routes.sources = () => {
         <span class="dot" style="background:${s.status==='ok'?'#1E874B':s.status==='part'?'#E0A33E':s.status==='dead'?'#D64545':'#B9C0D4'}"></span>
         <div style="flex:1;min-width:0">
           <div class="nm">${esc(s.name||'未命名')} ${badge(s.status)}</div>
-          <div class="hs">${esc(s.host||'')}${s.count?` · 搜索 ${s.count} 条`:''}${s.chars?` · 正文 ${s.chars} 字`:''}${s.ms?` · ${s.ms}ms`:''}</div>
+          <div class="hs">${esc(s.host||'')}${s.count?` · 搜索 ${s.count} 条`:''}${s.chars?` · 正文 ${s.chars} 字`:''}${s.ms?` · ${s.ms}ms`:''}${s.direct?' · 点「打开」回到保存时那一章':''}</div>
         </div>
-        <button class="btn ghost" style="height:28px;padding:0 9px;font-size:11px;border-radius:8px" data-act="test-source" data-id="${s.id}">测试</button>
+        ${s.direct
+          ? `<button class="btn ghost" style="height:28px;padding:0 9px;font-size:11px;border-radius:8px" data-act="open-site-source" data-url="${esc(s.direct)}">打开</button>`
+          : `<button class="btn ghost" style="height:28px;padding:0 9px;font-size:11px;border-radius:8px" data-act="test-source" data-id="${s.id}">测试</button>`}
         <button class="icon-btn" style="width:28px;height:28px;flex:0 0 auto;color:#9AA3B8" data-act="del-source" data-url="${esc(s.url||'')}" data-name="${esc(s.name||'')}" title="删除书源">${ic('trash','ico sm')}</button>
         <button class="switch ${s.enabled?'on':''}" data-act="toggle-source" data-id="${s.id}"><i></i></button>
       </div>`).join('')}
@@ -3678,6 +3743,11 @@ const ACTIONS = {
       })
       .catch(e => toast('清理失败：' + e.message));
   },
+  'open-site-source'(el){
+    const u = el.dataset.url;
+    if(!u) return toast('这个站点源没有保存直达章节');
+    if(!openArticleLink(u)) toast('链接格式不对，打不开');
+  },
   'test-source'(el){
     const id = el.dataset.id;
     toast('正在测试…');
@@ -3692,7 +3762,7 @@ const ACTIONS = {
   /* 批量体检：并发 6 个源，边测边刷列表；失败的重试一次，避免偶发网络问题误判 */
   'test-all'(){
     if(LIVE.testing){ LIVE.testStop = true; toast('正在停止，等当前几个测完…'); return; }
-    const all = (LIVE.srcList||[]).slice();
+    const all = (LIVE.srcList||[]).filter(s=>!s.direct).slice();
     if(!all.length) return toast('没有可测试的书源');
     const key = (S.query||'').trim() || '剑来';
     LIVE.testing = {done:0, total:all.length, ok:0, part:0, dead:0};
@@ -3898,6 +3968,11 @@ const ACTIONS = {
     if(S.reader) S.reader.pure = S.settings.pure;
     save(); render();
     toast(S.settings.pure?'纯净模式已开启':'纯净模式已关闭');
+  },
+  'toggle-auto-source'(){
+    S.settings.autoSource = S.settings.autoSource === false;
+    save(); render();
+    toast(S.settings.autoSource ? '净化章节时会顺手存站点源' : '已关闭：净化不再自动存站点源');
   },
   'close-reader'(){
     ttsStop();

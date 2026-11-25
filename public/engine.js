@@ -540,7 +540,7 @@
     // 全部启用且规则可跑的源都参与搜索，排序按实测状态：可用 > 部分可用 > 未测 > 失效
     // （limit 只作为上限保护，默认 400，够覆盖导入后的总量）
     const rank = s => s._status === 'ok' ? 0 : s._status === 'part' ? 1 : s._status === 'dead' ? 3 : 2;
-    const pool = SOURCES.filter(s => enabled(s) && supported(s)).sort((a, b) => rank(a) - rank(b)).slice(0, Math.max(1, limit));
+    const pool = SOURCES.filter(s => !s.yuyueDirect && enabled(s) && supported(s)).sort((a, b) => rank(a) - rank(b)).slice(0, Math.max(1, limit));
     const t0 = performance.now();
     const results = [], stats = [];
     let lastEmit = 0;
