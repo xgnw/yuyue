@@ -1478,7 +1478,7 @@ function searchChips(){
 
 /* ------------------------- 5. 底部导航 ------------------------- */
 function tabbar(){
-  const t = S.tab;
+  const t = S.view === 'me' ? 'me' : 'home';
   const item = (k, ico, label) =>
     `<button class="tab ${t===k?'on':''}" data-act="tab" data-tab="${k}">${ic(ico,'ico')}<span>${label}</span></button>`;
   return `<nav class="tabbar">
