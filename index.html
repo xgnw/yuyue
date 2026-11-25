@@ -583,6 +583,99 @@ body.dark .art-url{color:#8A93AB}
 .rd-art-html img{display:block;width:100%;height:auto;border-radius:10px;background:rgba(130,140,170,.08)}
 .rd-art-html figcaption{font-size:11px;line-height:1.6;text-align:center;opacity:.55;margin-top:6px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 .reader-foot .art-src{max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ==========================================================================
+   桌面端：从“手机画布”切到宽屏阅读工作区
+   - 首页/搜索/书源/我的 都有独立最大宽度，避免卡片被拉成一条长线
+   - 阅读器正文限制在 780px，长文不会横跨整块屏幕
+   - 底部两个 tab 收成居中的悬浮 dock，不再铺满整个宽度
+   ========================================================================== */
+@media (min-width:900px){
+  body{display:block;padding:0;overflow:hidden}
+  .app{
+    max-width:none;width:100%;height:100vh;min-height:0;
+    border-radius:0;border:0;box-shadow:none;background:var(--bg);
+  }
+  .scroll{scrollbar-width:thin;scrollbar-color:#C9D3EA transparent}
+  .scroll::-webkit-scrollbar{display:block;width:8px}
+  .scroll::-webkit-scrollbar-thumb{background:#C9D3EA;border-radius:8px}
+  .scroll::-webkit-scrollbar-track{background:transparent}
+
+  .home-head{max-width:1180px;margin:0 auto;width:min(1180px,calc(100% - 200px));padding:26px 36px 0}
+  .brandline{margin-bottom:18px}
+  .logo{width:38px;height:38px;border-radius:11px;font-size:18px}
+  .brandline .name{font-size:22px}
+  .brandline .sub{font-size:12px;padding-bottom:3px}
+  .searchbar{height:54px;max-width:780px;border-radius:16px;padding:0 8px 0 18px}
+  .searchbar input{font-size:15px}
+  .searchbar .go{height:40px;padding:0 20px;border-radius:12px}
+  .pad{max-width:1180px;margin:0 auto;width:100%;padding:0 36px}
+  .home-body{max-width:1180px;width:min(1180px,calc(100% - 200px))}
+  .sect{margin-top:30px}
+  .sect-head h3{font-size:17px}
+  .home-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 20px}
+  .home-grid .nm{font-size:13.5px}
+  .home-grid .pg{font-size:11.5px}
+  .shelf-head{max-width:1180px;margin:0 auto;width:min(1180px,calc(100% - 200px));padding:22px 36px 10px}
+  .shelf-grid{max-width:1180px;margin:0 auto;width:min(1180px,calc(100% - 200px));grid-template-columns:repeat(5,minmax(0,1fr));gap:24px 20px;padding:8px 36px 20px}
+
+  .bar{max-width:1180px;margin:0 auto;width:100%;padding:14px 36px 12px}
+  .bar .searchbar{max-width:780px;height:46px}
+  .tabbar{
+    position:absolute;left:24px;right:auto;top:50%;bottom:auto;transform:translateY(-50%);
+    width:76px;padding:6px;z-index:30;
+    grid-template-columns:1fr;gap:4px;
+    border:1px solid #E5EAF6;border-radius:20px;
+    box-shadow:0 14px 34px rgba(20,32,74,.16);
+    background:rgba(255,255,255,.93);
+  }
+  .tabbar .tab{padding:10px 0 8px;border-radius:14px}
+  .tabbar .tab.on{background:var(--brand-soft)}
+  .spacer-b{height:110px}
+
+  .lv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:start}
+  .lv-card{margin-bottom:0}
+  .res-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:start}
+  .res-card{margin-bottom:0}
+  .src-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px}
+  .src-list .src-row{margin-bottom:0}
+  .rank-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 18px}
+
+  .src-page{max-width:1040px;margin:0 auto;width:100%}
+  .me-hero{max-width:900px;margin:24px auto 0;width:min(900px,calc(100% - 200px));border-radius:24px;padding:24px 28px}
+  .me-list{max-width:900px;margin:16px auto 0;width:min(900px,calc(100% - 200px))}
+  .me-stats b{font-size:22px}
+  .settings-page{max-width:820px;margin:0 auto;width:100%}
+  .detail-hero{max-width:980px;margin:18px auto 0;border-radius:22px;padding:24px 30px 28px}
+  .detail-body{max-width:980px;margin:0 auto;width:100%;padding:24px 0}
+  .detail-actions{width:min(980px,calc(100% - 72px));margin:0 auto;padding:12px 0 calc(12px + var(--safe-b))}
+  .detail-actions .btn{white-space:nowrap;min-width:0}
+
+  .reader-head{max-width:980px;margin:0 auto;width:100%;padding:14px 24px 10px}
+  .reader-body{max-width:780px;margin:0 auto;width:100%;padding:34px 42px 64px}
+  .reader-body .ch-title{font-size:calc(var(--fs) + 6px);margin:8px 0 26px}
+  .reader-body p{margin-bottom:calc(var(--lh) * 1.05em)}
+  .reader-foot{max-width:980px;margin:0 auto;width:100%;padding:10px 24px calc(16px + var(--safe-b))}
+  .reader-tools{padding-left:max(24px,calc(50% - 390px))!important;padding-right:max(24px,calc(50% - 390px))!important}
+  .sheet{
+    left:50%;right:auto;width:min(560px,calc(100% - 48px));bottom:24px;
+    border-radius:20px;transform:translate(-50%,110%);max-height:70%;
+  }
+  .sheet.show{transform:translate(-50%,0)}
+  .modal{max-width:420px;padding:24px}
+  .drawer .panel{width:360px}
+  .toast{bottom:96px;max-width:520px}
+}
+
+/* 宽屏：内容再收一点，书架从 4 列扩到 6 列 */
+@media (min-width:1200px){
+  .home-head,.shelf-head,.shelf-grid,.bar{max-width:1060px}
+  .home-head,.bar,.shelf-head,.shelf-grid{width:min(1060px,calc(100% - 160px))}
+  .pad,.home-body{max-width:1060px;width:min(1060px,calc(100% - 160px))}
+  .settings-page{max-width:820px;width:min(820px,calc(100% - 160px))}
+  .home-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .shelf-grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+}
 </style>
 </head>
 <body>
@@ -2784,7 +2877,7 @@ routes.home = () => {
       </div>
     </div>
 
-    <div class="pad">
+    <div class="pad home-body">
       <div class="sect">
         <div class="sect-head">${ic('book','ico')}<h3>书架</h3>
           <button class="more" data-act="go-shelf">全部 ${ic('right','ico sm')}</button></div>
@@ -2935,6 +3028,7 @@ routes.search = () => {
     ${liveList.length ? `
       <div class="sect-head" style="margin:6px 0 10px">${ic('wifi','ico')}<h3>在线书源 · ${liveList.length} 本</h3>
         <button class="more" data-act="go-sources">书源明细 ${ic('chev','ico sm')}</button></div>
+      <div class="lv-grid">
       ${liveList.map((r,i)=>`
         <div class="lv-card" data-act="open-live" data-i="${i}">
           <div class="cv">${r.cover
@@ -2951,10 +3045,12 @@ routes.search = () => {
               <span class="enter">阅读 ›</span>
             </div>
           </div>
-        </div>`).join('')}` : ''}
+        </div>`).join('')}
+      </div>` : ''}
 
     ${q && localHits.length ? `
       <div class="sect-head" style="margin:14px 0 10px">${ic('book','ico')}<h3>本地书库 · ${localHits.length} 本</h3></div>
+      <div class="res-grid">
       ${localHits.map(b=>`
         <div class="res-card" data-act="open-book" data-id="${b.id}">
           <h4>${hl(b.title)}</h4>
@@ -2965,7 +3061,8 @@ routes.search = () => {
             <span class="libmeta">${b.chapters.length} 章 · ${Math.round(b.chapters.reduce((n,c)=>n+(c.content||'').length,0)/1000)}k 字</span>
             <span class="enter">阅读 ›</span>
           </div>
-        </div>`).join('')}` : ''}
+        </div>`).join('')}
+      </div>` : ''}
 
     ${q && !loading && !liveList.length && !failed ? `
       <div class="notice rights" style="margin-top:12px">
@@ -3331,7 +3428,7 @@ routes.settings = () => `
     <button class="icon-btn" data-act="tab" data-tab="me">${ic('back','ico')}</button>
     <div class="title">阅读偏好</div>
   </div>
-  <div class="scroll pad">
+  <div class="scroll pad settings-page">
     <div class="card" style="padding:14px;margin-top:12px">
       <div class="setting-row">
         <span class="lab">字号</span>
@@ -3423,7 +3520,7 @@ routes.sources = () => {
     <button class="icon-btn" data-act="tab" data-tab="me">${ic('back','ico')}</button>
     <div class="title">书源管理 · ${LIVE.sources.total||L.length}</div>
   </div>
-  <div class="scroll pad">
+  <div class="scroll pad src-page">
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn line" style="flex:1;min-width:0;margin:0;white-space:nowrap" data-act="import-source">${ic('plus','ico sm')} 导入书源</button>
       <button class="btn ghost" style="flex:0 0 auto;margin:0;padding:0 14px;white-space:nowrap" data-act="make-source" title="粘贴小说详情页链接，自动推断规则并造源">${ic('edit','ico sm')} 造源</button>
@@ -3459,6 +3556,7 @@ routes.sources = () => {
     ${(!LIVE.srcLoading && !list.length)?`<div class="card" style="padding:18px;margin-top:10px;text-align:center;font-size:12px;color:var(--muted);line-height:1.9">
       没有匹配的书源。<br>${q?'换个关键词，或点「清除」查看全部。':'这个状态下暂时没有书源，切到「全部」看看。'}
     </div>`:''}
+    <div class="src-list">
     ${list.map(s=>`
       <div class="src-row">
         <span class="dot" style="background:${s.status==='ok'?'#1E874B':s.status==='part'?'#E0A33E':s.status==='dead'?'#D64545':'#B9C0D4'}"></span>
@@ -3472,6 +3570,7 @@ routes.sources = () => {
         <button class="icon-btn" style="width:28px;height:28px;flex:0 0 auto;color:#9AA3B8" data-act="del-source" data-url="${esc(s.url||'')}" data-name="${esc(s.name||'')}" title="删除书源">${ic('trash','ico sm')}</button>
         <button class="switch ${s.enabled?'on':''}" data-act="toggle-source" data-id="${s.id}"><i></i></button>
       </div>`).join('')}
+    </div>
     <div class="spacer-b"></div>
   </div>`;
 };
