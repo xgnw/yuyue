@@ -506,6 +506,20 @@ body.dark #dl-barwrap{background:#2A2F40}
 .modal p{margin:0;font-size:13px;line-height:1.7;color:#5C6480;text-align:center}
 .modal .acts{display:flex;gap:10px;margin-top:18px}
 .modal .acts .btn{flex:1;height:40px;font-size:14px;border-radius:12px}
+.modal.src-picker{max-width:520px;width:min(520px,calc(100% - 40px));max-height:min(76vh,640px);display:flex;flex-direction:column;padding:20px}
+.src-picker h4{text-align:left;margin:0 0 4px;font-size:16px}
+.src-picker .src-pick-sub{margin:0 0 14px;text-align:left;font-size:12px;line-height:1.6;color:#8B93A8}
+.src-pick-list{display:flex;flex-direction:column;gap:8px;overflow:auto;margin:0 -4px;padding:2px 4px}
+.src-pick-row{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#F8FAFF;text-align:left;transition:border-color .15s,background .15s}
+.src-pick-row:hover{border-color:#C9D4FF;background:#F2F6FF}
+.src-pick-row.on{border-color:var(--brand);background:var(--brand-soft)}
+.src-pick-num{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:#EDF1FC;color:#6B7490;font-size:11px;font-weight:700}
+.src-pick-row.on .src-pick-num{background:#DCE4FF;color:#274AFF}
+.src-pick-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.src-pick-name{font-size:13.5px;font-weight:700;color:#2C3450;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-pick-host{font-size:11px;color:#9AA1B8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-pick-now{flex:none;font-size:11px;font-weight:700;color:#274AFF;background:#fff;border:1px solid #C9D4FF;border-radius:999px;padding:3px 9px}
+.rd-loading button{border:0;background:none;color:#2B6BE6;font-size:12.5px;text-decoration:underline;cursor:pointer}
 
 .toast{position:absolute;left:50%;bottom:calc(100px + var(--safe-b));transform:translate(-50%,10px);z-index:60;background:rgba(20,26,44,.9);color:#fff;font-size:12.5px;padding:10px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:all .25s;max-width:80%;text-align:center;backdrop-filter:blur(6px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
@@ -1064,9 +1078,83 @@ function remoteBook(id){
         title:m.title, author:m.author||'', intro:m.intro||'', remoteCover:m.remoteCover||'',
         cover:['#2B3A67','#7C8FF0'], cat:'站外聚合', tags:[m.sourceName||'书源'],
         hot:0, variants:m.variants||[{sid:m.sourceId,url:m.bookUrl,source:m.sourceName}],
+        variantIdx:m.variantIdx||0,
         chapters:[], chapterCount:m.chapterCount||0, loading:true, fetchStarted:false, error:'' };
   LIVE.books.push(b);
   return b;
+}
+
+/* 换源：切换到指定来源，并在新目录里按章节标题找回原来的位置 */
+let sourcePickFrom = null;
+function switchBookVariant(idx){
+  const b = book(S.bookId);
+  if(!b || !b.remote) return;
+  const v = (b.variants || [])[idx];
+  if(!v) return;
+  if((b.variantIdx || 0) === idx && b.sourceId === v.sid){ toast('已经是当前来源'); return; }
+  const fromReader = S.view === 'reader';
+  const oldCh = fromReader ? ((sourcePickFrom && sourcePickFrom.ch) || (S.reader && S.reader.ch) || 0) : 0;
+  const oldTitle = fromReader
+    ? ((sourcePickFrom && sourcePickFrom.title) || (b.chapters && b.chapters[oldCh] ? b.chapters[oldCh].title : ''))
+    : '';
+  sourcePickFrom = null;
+  const name = v.source || v.sid || ('来源 ' + (idx + 1));
+  b.variantIdx = idx;
+  b.sourceId = v.sid;
+  b.sourceName = name;
+  b.bookUrl = v.url;
+  b.chapters = [];
+  b.fetchStarted = false;
+  b.error = '';
+  b.loading = true;
+  if(S.rmMeta && S.rmMeta[b.id]){
+    Object.assign(S.rmMeta[b.id], { sourceId:v.sid, sourceName:name, bookUrl:v.url, variantIdx:idx });
+  }
+  const done = () => {
+    if(oldTitle && b.chapters && b.chapters.length){
+      const norm = s => String(s||'').replace(/[\s《》〈〉「」『』（）()\[\]·•,，。、:：;；\-—_|!！?？"“”'']+/g,'').toLowerCase();
+      const t = norm(oldTitle);
+      let hit = b.chapters.findIndex(c => norm(c.title) === t);
+      if(hit < 0) hit = b.chapters.findIndex(c => norm(c.title).includes(t) || t.includes(norm(c.title)));
+      if(hit < 0) hit = Math.min(oldCh, b.chapters.length - 1);
+      rdRT = {bookId:b.id, loaded:[], loading:false};
+      window.__rdJump = hit;
+      if(S.reader){ S.reader.ch = hit; S.reader.bookId = b.id; }
+      S.progress[b.id] = { ch:hit, ratio:0, ts:Date.now() };
+      pushHistory(b.id, hit);
+      save();
+    }
+    if(S.view === 'reader' && S.bookId === b.id) render();
+    else if(S.view === 'book' && S.bookId === b.id) render();
+  };
+  fetchRemoteToc(b, done);
+  render();
+  toast('已切换到来源：' + name);
+}
+
+function openSourcePicker(){
+  const b = book(S.bookId);
+  if(!b || !b.remote){ toast('本地书没有可切换的在线来源'); return; }
+  const vs = b.variants || [];
+  if(vs.length < 2){ toast('这本书只有一个来源，暂时无法换源'); return; }
+  sourcePickFrom = null;
+  if(S.view === 'reader'){
+    const fromCh = (S.reader && S.reader.ch) || 0;
+    sourcePickFrom = { ch:fromCh, title:(b.chapters && b.chapters[fromCh] ? b.chapters[fromCh].title : '') };
+  }
+  const cur = b.variantIdx || 0;
+  const rows = vs.map((v,i)=>{
+    let host = '';
+    try{ host = new URL(v.url).host; }catch(e){}
+    return `<button class="src-pick-row ${i===cur?'on':''}" data-act="pick-source" data-i="${i}">
+      <span class="src-pick-num">${i+1}</span>
+      <span class="src-pick-info"><span class="src-pick-name">${esc(v.source || v.sid || ('来源 '+(i+1)))}</span><span class="src-pick-host">${esc(host || v.url || '')}</span></span>
+      ${i===cur?'<span class="src-pick-now">当前</span>':''}
+    </button>`;
+  }).join('');
+  modal(`<h4>选择书源</h4>
+    <p class="src-pick-sub">《${esc(b.title)}》 · 共 ${vs.length} 个来源，点一个切换</p>
+    <div class="src-pick-list">${rows}</div>`, {cls:'src-picker'});
 }
 
 /* 拉取远程书的目录（详情页/阅读器打开时调用一次） */
@@ -1113,7 +1201,7 @@ function openRemote(item, idx = 0){
   if(!S.rmMeta) S.rmMeta = {};
   S.rmMeta[id] = { sourceId:v.sid, sourceName:v.source, bookUrl:v.url, title:item.name,
                    author:item.author||'', intro:item.intro||'', remoteCover:item.cover||'',
-                   variants:item.variants||[v] };
+                   variants:item.variants||[v], variantIdx:idx };
   S.bookId = id; S.view = 'book'; S.introOpen = false;
   pushHistory(id, (S.progress[id]||{}).ch || 0);
   save(); render();
@@ -1140,6 +1228,14 @@ function loadChapter(b, idx, onDone){
    ========================================================================== */
 let rdRT = {bookId:null, loaded:[], loading:false};
 
+/* 章节抓取失败时的补救入口：重试 / 换源 */
+function rdErrorActions(b, idx){
+  if(!b) return '';
+  const canSwitch = b.remote && (b.variants||[]).length > 1;
+  return ` · <button data-act="retry-ch" data-ch="${idx}">重试</button>` +
+    (canSwitch ? ` · <button data-act="switch-source">换源</button>` : '');
+}
+
 /* 某一章正文变化后，只重绘这一节（不动滚动位置） */
 function rdFillSection(b, idx){
   if(!b || S.view !== 'reader' || S.bookId !== b.id) return;
@@ -1149,8 +1245,7 @@ function rdFillSection(b, idx){
   if(!sec) return;
   sec.innerHTML = `<div class="ch-title">${esc(c.title)}</div>` +
     (c.content ? rdParasHTML(c)
-               : `<div class="rd-loading">${c.error ? esc(c.error) : '正在从书源抓取正文…'}${
-                    c.error ? ` · <button data-act="retry-ch" data-ch="${idx}" style="border:0;background:none;color:#2B6BE6;font-size:12.5px;text-decoration:underline">重试</button>` : ''}</div>`);
+               : `<div class="rd-loading">${c.error ? esc(c.error) : '正在从书源抓取正文…'}${c.error ? rdErrorActions(b, idx) : ''}</div>`);
 }
 
 function rdParagraphs(c){
@@ -1172,7 +1267,7 @@ function rdChapterHTML(b, i, r){
     <div class="ch-title">${esc(c.title)}</div>
     ${meta}
     ${!b.article && !r.pure && isFirst ? `<div class="site-note"><span class="lb">原网页</span>这是未清洗前的站点页面：顶部导航、侧栏推荐和悬浮按钮都在，正文被挤在中间。开启「纯净阅读」后只保留正文。</div>` : ''}
-    ${c.html ? `<div class="rd-art-html">${c.html}</div>` : (c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : (b.article ? '正在抓取本章正文…' : '正在从书源抓取正文…')}</div>`)}
+    ${c.html ? `<div class="rd-art-html">${c.html}</div>` : (c.content ? rdParasHTML(c) : `<div class="rd-loading">${c.error ? esc(c.error) : (b.article ? '正在抓取本章正文…' : '正在从书源抓取正文…')}${c.error ? rdErrorActions(b, i) : ''}</div>`)}
   </section>`;
 }
 function rdTailText(){
@@ -1639,6 +1734,7 @@ routes.reader = () => {
 
     <div class="reader-tools" style="display:flex;align-items:center;justify-content:space-around;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:${th.bg};border-top:1px solid rgba(140,140,140,.14)">
       ${art ? `<button data-act="open-original-article" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('link','ico')}<span>原文</span></button>` : `<button data-act="open-catalog" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('list','ico')}<span>目录</span></button>`}
+      ${!art && b.remote && (b.variants||[]).length>1 ? `<button data-act="switch-source" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('search2','ico')}<span>换源</span></button>` : ''}
       <button data-act="open-reader-settings" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('font','ico')}<span>字号</span></button>
       ${art ? '' : `<button data-act="toggle-pure" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${r.pure?'#2B9A5B':th.fg};opacity:${r.pure?1:.8}">${ic('shield','ico')}<span>${r.pure?'纯净模式':'原网页'}</span></button>`}
       <button data-act="toggle-tts" style="display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:${th.fg};opacity:.8">${ic('play','ico')}<span>听书</span></button>
@@ -3673,7 +3769,7 @@ function modal(html, opts={}){
   closeModal();
   const wrap = document.createElement('div');
   wrap.innerHTML = `<div class="modal-mask show" data-act="close-modal"></div>
-    <div class="modal show">${html}</div>`;
+    <div class="modal show ${opts.cls || ''}">${html}</div>`;
   $('#screen').appendChild(wrap);
   modalEl = wrap;
   if(opts.onMount) opts.onMount(wrap);
@@ -3835,15 +3931,11 @@ const ACTIONS = {
       if(v && S.view === 'sources') loadSourceList();
     });
   },
-  'switch-source'(el){
-    const b = book(S.bookId); if(!b || !b.remote) return;
-    const v = b.variants || [];
-    if(v.length < 2){ toast('这条结果只有一个来源'); return; }
-    b.variantIdx = (((b.variantIdx||0) + 1) % v.length);
-    b.chapters = []; b.fetchStarted = false; b.error = ''; b.loading = true;
-    b.sourceId = v[b.variantIdx].sid; b.sourceName = v[b.variantIdx].source; b.bookUrl = v[b.variantIdx].url;
-    render(); fetchRemoteToc(b, () => render());
-    toast('已切换到来源：' + b.sourceName);
+  'switch-source'(){ openSourcePicker(); },
+  'pick-source'(el){
+    const i = Number(el.dataset.i);
+    closeModal();
+    switchBookVariant(i);
   },
   'src-filter'(el){ LIVE.srcFilter = el.dataset.k; render(); },
   'src-search'(el){
